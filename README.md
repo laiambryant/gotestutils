@@ -22,11 +22,11 @@ go get github.com/laiambryant/gotestutils
 ### Testing Utilities
 
 ```go
-import "github.com/laiambryant/goutils/testing"
+import "github.com/laiambryant/gotestutils/ctesting"
 
 // Example usage
 testSuite := []testing.CharacterizationTest[int]{
-    testing.NewCharacterizationTest(3, nil, func() (int, error) { 
+    ctesting.NewCharacterizationTest(3, nil, func() (int, error) { 
         return sum(1, 2), nil 
     }),
 }
