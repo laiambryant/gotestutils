@@ -5,7 +5,7 @@
 [![GitHub license](https://img.shields.io/github/license/laiambryant/gotestutils.svg)](https://github.com/laiambryant/gotestutils/blob/main/LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/laiambryant/gotestutils.svg)](https://github.com/laiambryant/gotestutils/issues)
 [![GitHub stars](https://img.shields.io/github/stars/laiambryant/gotestutils.svg)](https://github.com/laiambryant/gotestutils/stargazers)
-[![Coverage Status](https://coveralls.io/repos/github/laiambryant/mygotestutils/badge.svg?branch=main)](https://coveralls.io/repos/github/laiambryant/mygotestutils/badge.svg?branch=main)
+[![Coverage Status](https://coveralls.io/repos/github/laiambryant/goTestUtils/badge.svg?branch=main)](https://coveralls.io/github/laiambryant/goTestUtils?branch=main)
 
 My Favourite testing utility methods for go. Includes utilities for:
 
