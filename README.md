@@ -9,7 +9,8 @@
 
 My Favourite testing utility methods for go. Includes utilities for:
 
-- Characterization testing framework for capturing existing code behavior
+- Characterization testing
+- More to come...
 
 ## Installation
 
