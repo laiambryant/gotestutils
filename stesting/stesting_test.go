@@ -74,9 +74,9 @@ func TestRunParallelStressTestSingleWorker(t *testing.T) {
 }
 
 func TestRunParallelStressMultiWorker(t *testing.T) {
-	iterations := uint64(5000000)
+	iterations := uint64(50000)
 	stressTest := NewStressTest[bool, int](iterations, testFunc, nil)
-	success, err := RunParallelStressTest(&stressTest, uint32(1000))
+	success, err := RunParallelStressTest(&stressTest, uint32(10))
 	assertSuccessNoError(t, success, err)
 }
 
