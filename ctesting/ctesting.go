@@ -1,8 +1,11 @@
 package ctesting
 
 import (
+	"errors"
 	"reflect"
 	"testing"
+
+	gtu "github.com/laiambryant/gotestutils/testing"
 )
 
 // CharacterizationTest represents a single test case for characterization testing.
@@ -26,18 +29,8 @@ type CharacterizationTest[t comparable] struct {
 	ExpectedErr    error
 	output         t
 	ExpectedOutput t
-	F              TestFunc[t]
+	F              gtu.TestFunc[t]
 }
-
-// TestFunc defines the signature for functions that can be tested with CharacterizationTest.
-// The function should return a value of type t and an error.
-// This allows testing both the return value and error conditions.
-//
-// Example:
-//
-//	func() (int, error) { return sum(1, 2), nil }
-//	func() (string, error) { return getName(), fmt.Errorf("not found") }
-type TestFunc[t comparable] func() (t, error)
 
 // NewCharacterizationTest creates a new CharacterizationTest instance with the specified
 // expected output, expected error, and test function to execute.
@@ -59,7 +52,7 @@ type TestFunc[t comparable] func() (t, error)
 //
 //	// Test expecting failure (wrong expected output)
 //	test := NewCharacterizationTest(4, nil, func() (int, error) { return sum(1, 2), nil })
-func NewCharacterizationTest[t comparable](expectedOutput t, expectedError error, function TestFunc[t]) (test CharacterizationTest[t]) {
+func NewCharacterizationTest[t comparable](expectedOutput t, expectedError error, function gtu.TestFunc[t]) (test CharacterizationTest[t]) {
 	return CharacterizationTest[t]{
 		ExpectedErr:    expectedError,
 		ExpectedOutput: expectedOutput,
@@ -120,7 +113,7 @@ func deepErrorCheck[t comparable](err error, test CharacterizationTest[t], outpu
 }
 
 func shallowErrorCheck[t comparable](err error, test CharacterizationTest[t], output t) (res bool) {
-	if err != nil && test.ExpectedErr != nil ||
+	if ((err != nil && test.ExpectedErr != nil) && (errors.Is(err, test.ExpectedErr) || err.Error() == test.ExpectedErr.Error())) ||
 		reflect.DeepEqual(test.ExpectedOutput, output) {
 		return true
 	} else {
