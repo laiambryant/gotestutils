@@ -26,10 +26,10 @@ go get github.com/laiambryant/gotestutils
 import "github.com/laiambryant/gotestutils/ctesting"
 
 // Example usage
-testSuite := []testing.CharacterizationTest[int]{
+testSuite := []ctesting.CharacterizationTest[int]{
     ctesting.NewCharacterizationTest(3, nil, func() (int, error) { 
         return sum(1, 2), nil 
     }),
 }
-results, _ := testing.VerifyCharacterizationTestsAndResults(t, testSuite)
+results, _ := ctesting.VerifyCharacterizationTestsAndResults(t, testSuite)
 ```
