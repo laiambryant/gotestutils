@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync/atomic"
 	"testing"
 )
 
@@ -42,10 +43,10 @@ func assertNoSuccessError(t *testing.T, success bool, err error) {
 }
 
 func TestRunParallelStressTestSuccess(t *testing.T) {
-	counter := 0
+	var counter int64
 	testFunc := func() (int, error) {
-		counter++
-		return counter, nil
+		newVal := atomic.AddInt64(&counter, 1)
+		return int(newVal), nil
 	}
 	stressTest := NewStressTest[int, int](100, testFunc, nil)
 	success, err := RunParallelStressTest(&stressTest, 4)
@@ -95,10 +96,10 @@ func TestTestingError(t *testing.T) {
 }
 
 func TestRunStressTestSuccess(t *testing.T) {
-	counter := 0
+	var counter int64
 	testFunc := func() (int, error) {
-		counter++
-		return counter, nil
+		newVal := atomic.AddInt64(&counter, 1)
+		return int(newVal), nil
 	}
 	stressTest := NewStressTest[int, int](100, testFunc, nil)
 	success, err := RunStressTest(&stressTest)

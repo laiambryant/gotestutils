@@ -19,40 +19,6 @@ My Favourite testing utility methods for go. Includes utilities for:
 go get github.com/laiambryant/gotestutils
 ```
 
-## Quick Start
-
-### Characterization Testing
-
-```go
-import "github.com/laiambryant/gotestutils/ctesting"
-
-// Example usage
-testSuite := []ctesting.CharacterizationTest[int]{
-    ctesting.NewCharacterizationTest(3, nil, func() (int, error) { 
-        return sum(1, 2), nil 
-    }),
-}
-results, _ := ctesting.VerifyCharacterizationTestsAndResults(t, testSuite)
-```
-
-### Stress Testing
-
-```go
-import "github.com/laiambryant/gotestutils/stesting"
-
-// Basic stress test - runs a function 1000 times sequentially
-stressTest := stesting.NewStressTest[int, any](1000, func() (int, error) {
-    return expensiveOperation(), nil
-}, nil)
-success, err := stesting.RunStressTest(&stressTest)
-
-// Parallel stress test - distributes work across multiple goroutines
-success, err = stesting.RunParallelStressTest(&stressTest, 10) // 10 workers
-
-// Stress test with file output - saves results to a file
-success, err = stesting.RunStressTestWithFilePathOut(&stressTest, "output.txt")
-```
-
 ## Characterization Testing
 
 The `ctesting` package provides a powerful framework for characterization testing in Go. Characterization tests capture and verify the current behavior of existing code by comparing actual outputs and errors against expected values. This approach is particularly valuable when working with legacy code, refactoring existing systems, or documenting the behavior of complex functions.
