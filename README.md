@@ -106,7 +106,7 @@ The `StressTest[fRetType, testVarType]` struct is the foundation of the stress t
 ```go
 type StressTest[fRetType comparable, testVarType comparable] struct {
     iterations uint64 // Number of iterations to run
-    testVar    *testVarType // Variable who's value should be tested at the end of the test
+    testVar    *testVarType // Value to test at the end of the test
     F          gtu.TestFunc[fRetType] // The test function to execute
 }
 ```
@@ -121,33 +121,13 @@ See [`examples/basic_stress_test.go`](examples/basic_stress_test.go) for complet
 
 `RunStressTest` executes the test function repeatedly in a single goroutine, running each iteration sequentially. This approach provides predictable, deterministic execution order and is essential when testing functions that are not thread-safe or when you need to measure sequential performance characteristics. Sequential execution also makes it easier to reproduce and debug issues since there are no concurrency-related variables affecting the test results.
 
-**Use cases:**
-
-- Testing functions that are not thread-safe
-- Measuring sequential performance
-- Simple reliability testing
-
 #### Parallel Execution
 
 `RunParallelStressTest` distributes the stress test workload across multiple goroutines, allowing concurrent execution of the test function. You specify the maximum number of worker goroutines, and the framework distributes iterations among them using a work queue pattern. This approach is valuable for testing concurrent safety, identifying race conditions, simulating realistic load scenarios, and evaluating performance under parallel execution. The function stops immediately upon encountering the first error and properly synchronizes all workers before returning.
 
-**Use cases:**
-
-- Testing concurrent safety and race conditions
-- Load testing with realistic concurrency
-- Performance testing under parallel execution
-- Identifying deadlocks or synchronization issues
-
 #### File Output Testing
 
 The framework provides functions to save stress test results to files for detailed analysis. `RunStressTestWithFilePathOut` creates a file at the specified path and writes each iteration's output, while `RunStressTestWithFileOut` uses an existing file handle. This capability is particularly useful for analyzing output patterns across many iterations, investigating intermittent issues that only appear under sustained load, creating audit trails for compliance testing, and performing post-execution analysis of performance trends or data patterns.
-
-**Use cases:**
-
-- Analyzing output patterns over many iterations
-- Debugging intermittent issues
-- Performance profiling and trend analysis
-- Compliance testing with audit trails
 
 ### Stress Testing Examples
 
@@ -157,15 +137,6 @@ Complete examples for stress testing:
 - [`examples/web_service_stress_test.go`](examples/web_service_stress_test.go) - Stress testing web service calls with concurrent workers
 - [`examples/memory_stress_test.go`](examples/memory_stress_test.go) - Testing memory-intensive functions with file output for analysis
 - [`examples/stress_error_handling_test.go`](examples/stress_error_handling_test.go) - Error handling in stress tests with detailed iteration information
-
-### Stress Testing Best Practices
-
-1. **Choose appropriate iteration counts**: Start with smaller numbers and increase based on your needs
-2. **Monitor resource usage**: Use tools like `go test -race` and `go test -memprofile` with stress tests
-3. **Use parallel tests judiciously**: Not all functions are safe for concurrent testing
-4. **Combine with benchmarks**: Use `go test -bench` alongside stress tests for comprehensive performance analysis
-5. **File output for debugging**: Use file output when investigating intermittent failures
-6. **Gradual load increase**: Start with fewer workers/iterations and gradually increase to find breaking points
 
 ### Integration with Go Testing
 
