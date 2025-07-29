@@ -2,8 +2,6 @@ package examples
 
 import "fmt"
 
-// Helper functions used across examples
-
 func Sum(a, b int) int {
 	return a + b
 }
@@ -17,13 +15,6 @@ func CalculateResult(a, b int) int {
 }
 
 func Divide(a, b int) (int, error) {
-	if b == 0 {
-		return 0, fmt.Errorf("division by zero")
-	}
-	return a / b, nil
-}
-
-func SafeDivide(a, b int) (int, error) {
 	if b == 0 {
 		return 0, fmt.Errorf("division by zero")
 	}

@@ -47,6 +47,7 @@ func TestIntegratedExecutionExample(t *testing.T) {
 
 // TestErrorCheckingExample demonstrates different error checking modes
 func TestErrorCheckingExample(t *testing.T) {
+
 	testSuite := []ctesting.CharacterizationTest[int]{
 		ctesting.NewCharacterizationTest(3, nil, func() (int, error) {
 			return Sum(1, 2), nil
@@ -57,7 +58,8 @@ func TestErrorCheckingExample(t *testing.T) {
 	results, _ := ctesting.VerifyCharacterizationTests(testSuite, true)
 
 	// Shallow error checking (uses errors.Is() for error comparison)
-	results, _ = ctesting.VerifyCharacterizationTests(testSuite, false)
+	_, _ = ctesting.VerifyCharacterizationTests(testSuite, false)
 
-	_ = results // Use the variable to avoid unused variable error
+	_ = results
+
 }

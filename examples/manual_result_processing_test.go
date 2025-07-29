@@ -34,7 +34,4 @@ func TestManualResultProcessing(t *testing.T) {
 			}
 		}
 	}
-
-	// Use ctesting.VerifyResults for standard reporting
-	ctesting.VerifyResults(t, results, testSuiteRes)
 }

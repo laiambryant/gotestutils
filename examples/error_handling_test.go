@@ -13,7 +13,7 @@ func TestErrorHandlingCharacterization(t *testing.T) {
 		// Test division by zero
 		ctesting.NewCharacterizationTest(0,
 			fmt.Errorf("division by zero"), func() (int, error) {
-				return SafeDivide(10, 0)
+				return Divide(10, 0)
 			}),
 
 		// Test negative input validation
@@ -24,7 +24,7 @@ func TestErrorHandlingCharacterization(t *testing.T) {
 
 		// Test successful operation
 		ctesting.NewCharacterizationTest(5, nil, func() (int, error) {
-			return SafeDivide(25, 5)
+			return Divide(25, 5)
 		}),
 	}
 

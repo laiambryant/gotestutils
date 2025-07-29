@@ -37,8 +37,6 @@ func createUserProfile(name string, age int) (UserProfile, error) {
 	if name == "" {
 		return UserProfile{}, fmt.Errorf("name cannot be empty")
 	}
-
-	// Simple ID generation for example
 	return UserProfile{
 		ID:   1,
 		Name: name,

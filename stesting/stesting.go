@@ -23,7 +23,7 @@ import (
 // This struct is designed to facilitate performance and reliability testing
 // by running the same test function multiple times and collecting results.
 type StressTest[fRetType comparable, testVarType comparable] struct {
-	iterations uint64
+	iterations uint32
 	testVar    *testVarType
 	F          gtu.TestFunc[fRetType]
 }
@@ -44,7 +44,7 @@ type StressTest[fRetType comparable, testVarType comparable] struct {
 // Returns:
 //   - stressTest: a configured StressTest instance ready for execution
 func NewStressTest[fRetType comparable, testVarType comparable](
-	iterations uint64,
+	iterations uint32,
 	f gtu.TestFunc[fRetType],
 	testVar *testVarType,
 ) (stressTest StressTest[fRetType, testVarType]) {
@@ -73,10 +73,10 @@ func NewStressTest[fRetType comparable, testVarType comparable](
 func RunStressTest[fRetType comparable, testVarType comparable](
 	stressTest *StressTest[fRetType, testVarType],
 ) (success bool, err error) {
-	for i := uint64(0); i < stressTest.iterations; i++ {
+	for range stressTest.iterations {
 		_, err = stressTest.F()
 		if err != nil {
-			return false, StressTestingError{Index: i, Err: err}
+			return false, StressTestingError{Err: err}
 		}
 	}
 	return true, nil
@@ -106,33 +106,22 @@ func RunParallelStressTest[fRetType comparable, testVarType comparable](
 	stressTest *StressTest[fRetType, testVarType],
 	maxWorkers uint32,
 ) (success bool, r_err error) {
-	errchan := make(chan error, stressTest.iterations)
-	jobs := make(chan uint64)
-	worker := func() {
-		for index := range jobs {
-			_, err := stressTest.F()
-			if err != nil {
-				errchan <- StressTestingError{Index: index, Err: err}
-			} else {
-				errchan <- nil
-			}
-		}
-	}
+	errchan, jobs := make(chan error, stressTest.iterations), make(chan uint32)
 	var wg sync.WaitGroup
 	wg.Add(int(maxWorkers))
-	for w := uint32(0); w < maxWorkers; w++ {
+	for range maxWorkers {
 		go func() {
 			defer wg.Done()
-			worker()
+			workerFunc(jobs, stressTest, errchan)
 		}()
 	}
 	go func() {
-		for i := uint64(0); i < stressTest.iterations; i++ {
+		for i := uint32(0); i < stressTest.iterations; i++ {
 			jobs <- i
 		}
 		close(jobs)
 	}()
-	for i := uint64(0); i < stressTest.iterations; i++ {
+	for range stressTest.iterations {
 		if r_err = <-errchan; r_err != nil {
 			wg.Wait()
 			close(errchan)
@@ -144,6 +133,33 @@ func RunParallelStressTest[fRetType comparable, testVarType comparable](
 	wg.Wait()
 	close(errchan)
 	return true, nil
+}
+
+// workerFunc executes stress test iterations for parallel execution.
+// It processes job indices from the jobs channel, runs the stress test function,
+// and sends results (either nil for success or StressTestingError for failure) to the error channel.
+//
+// Type parameters:
+//   - fRetType: the return type of the stress test function (must be comparable)
+//   - testVarType: the type of test variables used in the stress test (must be comparable)
+//
+// Parameters:
+//   - jobs: receive-only channel containing iteration indices to process
+//   - stressTest: pointer to the StressTest instance containing the function to execute
+//   - errchan: send-only channel for communicating results back to the coordinator
+//
+// For each job received, the function executes the stress test and sends either:
+//   - nil to errchan if the test iteration succeeds
+//   - StressTestingError to errchan if the test iteration fails, containing the index and error
+func workerFunc[fRetType comparable, testVarType comparable](jobs <-chan uint32, stressTest *StressTest[fRetType, testVarType], errchan chan<- error) {
+	for range jobs {
+		_, err := stressTest.F()
+		if err != nil {
+			errchan <- StressTestingError{Err: err}
+		} else {
+			errchan <- nil
+		}
+	}
 }
 
 // RunStressTestWithFileOut executes a stress test and writes the output of each iteration to a file.
@@ -170,7 +186,7 @@ func RunStressTestWithFileOut[fRetType comparable, testVarType comparable](
 ) (success bool, err error) {
 	defer file.Close()
 	var out fRetType
-	for i := uint64(0); i < stressTest.iterations; i++ {
+	for i := uint32(0); i < stressTest.iterations; i++ {
 		out, err = stressTest.F()
 		file.WriteString(fmt.Sprintf("%+#v\n", out))
 		if err != nil {

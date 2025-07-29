@@ -3,7 +3,7 @@ package stesting
 import "fmt"
 
 type StressTestingError struct {
-	Index uint64
+	Index uint32
 	Err   error
 }
 
