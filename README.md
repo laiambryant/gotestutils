@@ -11,6 +11,7 @@ My Favourite testing utility methods for go. Includes utilities for:
 
 - Characterization testing
 - Stress testing
+- Property Testing
 - More to come...
 
 ## Installation
