@@ -1,13 +1,13 @@
-package ptesting
+package pbtesting
 
 import (
 	"fmt"
 
-	s "github.com/laiambryant/gotestutils/ptesting/strategies"
+	p "github.com/laiambryant/gotestutils/pbtesting/properties"
 )
 
 type InvalidPropertyError struct {
-	property s.Property
+	property p.Property
 }
 
 func (i InvalidPropertyError) Error() string {
