@@ -8,23 +8,29 @@ import (
 
 type PBTest struct {
 	Func                       func(...any) []any
-	PreconditionValidationFunc func(any) bool
-	Properties                 []s.Property
+	PreconditionValidationFunc func(...any) bool
+	Predicates                 []s.Predicate
 	iterations                 uint
 }
 
 func (pbt PBTest) Run() {
-	for range pbt.iterations {
-		continue
+	for i := uint(0); i < pbt.iterations; i++ {
+		inputs, _ := pbt.generateInputs()
+		if !pbt.validatePreconditions(inputs...) {
+			continue
+		}
+		outs, _ := pbt.applyFunction(inputs...)
+		// Optional: apply predicates on outputs here if desired in Run
+		_ = outs
 	}
 }
 
 func extractFArgTypes(f any) (inputTypes []reflect.Type, ouputTypes []reflect.Type) {
 	types := reflect.TypeOf(f)
-	for i := range types.NumIn() {
+	for i := 0; i < types.NumIn(); i++ {
 		inputTypes = append(inputTypes, types.In(i))
 	}
-	for i := range types.NumOut() {
+	for i := 0; i < types.NumOut(); i++ {
 		ouputTypes = append(ouputTypes, types.Out(i))
 	}
 	return
@@ -33,65 +39,53 @@ func extractFArgTypes(f any) (inputTypes []reflect.Type, ouputTypes []reflect.Ty
 func createInstances(types []reflect.Type, isZero bool) []any {
 	instances := make([]any, len(types))
 	for i, t := range types {
+		newValue := reflect.New(t).Elem()
 		if isZero {
-			newValue := reflect.New(t).Elem()
 			instances[i] = newValue.Interface()
+			continue
 		}
-		// If not zero fill with random values
+		getRandomValue(newValue)
+		instances[i] = newValue.Interface()
 	}
 	return instances
 }
 
-func getRandomValue(v reflect.Value, properties []s.Property) {
-	switch v.Kind() {
-	case reflect.Bool:
-		break
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		break
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		break
-	case reflect.Float32, reflect.Float64:
-		break
-	case reflect.Complex64, reflect.Complex128:
-		break
-	case reflect.Array:
-		break
-	case reflect.Chan:
-		break
-	case reflect.Func:
-		break
-	case reflect.Interface:
-		break
-	case reflect.Map:
-		break
-	case reflect.Pointer:
-		break
-	case reflect.Slice:
-		break
-	case reflect.String:
-		break
-	case reflect.Struct:
-		break
-	case reflect.UnsafePointer:
-		break
-	default:
-		break
-	}
-}
 func (pbt PBTest) validatePreconditions(args ...any) bool {
-	return pbt.PreconditionValidationFunc(args)
+	if pbt.PreconditionValidationFunc == nil {
+		return true
+	}
+	return pbt.PreconditionValidationFunc(args...)
 }
 
-func (pbt PBTest) applyFunction(args ...any) (any, error) {
-	return pbt.Func(args), nil
+func (pbt PBTest) applyFunction(args ...any) ([]any, error) {
+	if pbt.Func == nil {
+		return nil, nil
+	}
+	return pbt.Func(args...), nil
 }
 
 func (pbt PBTest) generateInputs() ([]any, error) {
-	var inputs []any
-	for _, property := range pbt.Properties {
-		value := property.Verify(nil)
-		inputs = append(inputs, value)
-		return inputs, InvalidPropertyError{property}
+	if pbt.Func == nil {
+		return nil, nil
 	}
-	return inputs, nil
+	inTypes, _ := extractFArgTypes(pbt.Func)
+	args := make([]any, len(inTypes))
+	for i, t := range inTypes {
+		v := reflect.New(t).Elem()
+		getRandomValue(v)
+		args[i] = v.Interface()
+	}
+	return args, nil
+}
+
+func (pbt PBTest) satisfyAll(val any) bool {
+	if len(pbt.Predicates) == 0 {
+		return true
+	}
+	for _, prop := range pbt.Predicates {
+		if !prop.Verify(val) {
+			return false
+		}
+	}
+	return true
 }
