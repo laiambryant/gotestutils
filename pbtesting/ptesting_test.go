@@ -14,4 +14,6 @@ func TestExtractFargTypes(t *testing.T) {
 		t.Errorf("Expected 3 output types, got %d", len(out))
 	}
 	t.Logf("Input Types: %v\nOutput Types: %v", in, out)
+	t.Logf("In instances%v", createInstances(in, true))
+	t.Logf("Out instances%v", createInstances(out, true))
 }
