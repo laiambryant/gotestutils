@@ -13,16 +13,38 @@ type PBTest struct {
 	iterations                 uint
 }
 
-func (pbt PBTest) Run() {
+type PBTestOut struct {
+	Output     any
+	predicates []s.Predicate
+	success    bool
+}
+
+func (pbt PBTest) Run() (retOut []PBTestOut) {
 	for i := uint(0); i < pbt.iterations; i++ {
 		inputs, _ := pbt.generateInputs()
 		if !pbt.validatePreconditions(inputs...) {
 			continue
 		}
 		outs, _ := pbt.applyFunction(inputs...)
-		// Optional: apply predicates on outputs here if desired in Run
-		_ = outs
+		if pbt.hasPredicates() {
+			for out := range outs {
+				if ok, failedPredicates := pbt.satisfyAll(out); !ok {
+					retOut = append(retOut, PBTestOut{
+						Output:     out,
+						predicates: failedPredicates,
+						success:    false,
+					})
+				} else {
+					retOut = append(retOut, PBTestOut{
+						Output:     out,
+						predicates: nil,
+						success:    true,
+					})
+				}
+			}
+		}
 	}
+	return retOut
 }
 
 func extractFArgTypes(f any) (inputTypes []reflect.Type, ouputTypes []reflect.Type) {
@@ -78,14 +100,21 @@ func (pbt PBTest) generateInputs() ([]any, error) {
 	return args, nil
 }
 
-func (pbt PBTest) satisfyAll(val any) bool {
+func (pbt PBTest) satisfyAll(val any) (ok bool, failedPredicates []s.Predicate) {
 	if len(pbt.Predicates) == 0 {
-		return true
+		return true, nil
 	}
-	for _, prop := range pbt.Predicates {
-		if !prop.Verify(val) {
-			return false
+	for _, predicate := range pbt.Predicates {
+		if !predicate.Verify(val) {
+			failedPredicates = append(failedPredicates, predicate)
 		}
 	}
-	return true
+	if len(failedPredicates) > 0 {
+		return false, failedPredicates
+	}
+	return true, nil
+}
+
+func (pbt PBTest) hasPredicates() bool {
+	return pbt.Predicates != nil
 }
