@@ -4,41 +4,43 @@ import (
 	"reflect"
 
 	s "github.com/laiambryant/gotestutils/pbtesting/properties"
+	"github.com/laiambryant/gotestutils/utils"
 )
 
 type PBTest struct {
-	Func                       func(...any) []any
-	PreconditionValidationFunc func(...any) bool
-	Predicates                 []s.Predicate
-	iterations                 uint
+	Func            func(...any) []any
+	inputAttributes []s.InputAttributes
+	predicates      []s.Predicate
+	iterations      uint
 }
 
 type PBTestOut struct {
 	Output     any
-	predicates []s.Predicate
-	success    bool
+	Predicates []s.Predicate
+	ok         bool
+}
+
+func NewPBTest(f func(...any) []any) *PBTest {
+	return &PBTest{}
 }
 
 func (pbt PBTest) Run() (retOut []PBTestOut) {
 	for i := uint(0); i < pbt.iterations; i++ {
 		inputs, _ := pbt.generateInputs()
-		if !pbt.validatePreconditions(inputs...) {
-			continue
-		}
 		outs, _ := pbt.applyFunction(inputs...)
-		if pbt.hasPredicates() {
+		if pbt.haspredicates() {
 			for out := range outs {
-				if ok, failedPredicates := pbt.satisfyAll(out); !ok {
+				if ok, failedpredicates := pbt.satisfyAll(out); !ok {
 					retOut = append(retOut, PBTestOut{
 						Output:     out,
-						predicates: failedPredicates,
-						success:    false,
+						Predicates: failedpredicates,
+						ok:         false,
 					})
 				} else {
 					retOut = append(retOut, PBTestOut{
 						Output:     out,
-						predicates: nil,
-						success:    true,
+						Predicates: nil,
+						ok:         true,
 					})
 				}
 			}
@@ -72,13 +74,6 @@ func createInstances(types []reflect.Type, isZero bool) []any {
 	return instances
 }
 
-func (pbt PBTest) validatePreconditions(args ...any) bool {
-	if pbt.PreconditionValidationFunc == nil {
-		return true
-	}
-	return pbt.PreconditionValidationFunc(args...)
-}
-
 func (pbt PBTest) applyFunction(args ...any) ([]any, error) {
 	if pbt.Func == nil {
 		return nil, nil
@@ -100,21 +95,27 @@ func (pbt PBTest) generateInputs() ([]any, error) {
 	return args, nil
 }
 
-func (pbt PBTest) satisfyAll(val any) (ok bool, failedPredicates []s.Predicate) {
-	if len(pbt.Predicates) == 0 {
+func (pbt PBTest) satisfyAll(val any) (ok bool, failedpredicates []s.Predicate) {
+	if len(pbt.predicates) == 0 {
 		return true, nil
 	}
-	for _, predicate := range pbt.Predicates {
+	for _, predicate := range pbt.predicates {
 		if !predicate.Verify(val) {
-			failedPredicates = append(failedPredicates, predicate)
+			failedpredicates = append(failedpredicates, predicate)
 		}
 	}
-	if len(failedPredicates) > 0 {
-		return false, failedPredicates
+	if len(failedpredicates) > 0 {
+		return false, failedpredicates
 	}
 	return true, nil
 }
 
-func (pbt PBTest) hasPredicates() bool {
-	return pbt.Predicates != nil
+func (pbt PBTest) haspredicates() bool {
+	return pbt.predicates != nil
+}
+
+func FilterPBTTestOut(in []PBTestOut) []PBTestOut {
+	return utils.Filter(in, func(po PBTestOut) bool {
+		return !po.ok
+	})
 }
