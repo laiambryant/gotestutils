@@ -8,10 +8,9 @@ import (
 )
 
 type PBTest struct {
-	Func            func(...any) []any
-	inputAttributes []s.InputAttributes
-	predicates      []s.Predicate
-	iterations      uint
+	f          func(...any) []any
+	predicates []s.Predicate
+	iterations uint
 }
 
 type PBTestOut struct {
@@ -29,22 +28,27 @@ func (pbt PBTest) Run() (retOut []PBTestOut) {
 		inputs, _ := pbt.generateInputs()
 		outs, _ := pbt.applyFunction(inputs...)
 		if pbt.haspredicates() {
-			for out := range outs {
-				if ok, failedpredicates := pbt.satisfyAll(out); !ok {
-					retOut = append(retOut, PBTestOut{
-						Output:     out,
-						Predicates: failedpredicates,
-						ok:         false,
-					})
-				} else {
-					retOut = append(retOut, PBTestOut{
-						Output:     out,
-						Predicates: nil,
-						ok:         true,
-					})
-				}
+			for _, out := range outs {
+				retOut = pbt.validatePredicates(retOut, out)
 			}
 		}
+	}
+	return retOut
+}
+
+func (pbt PBTest) validatePredicates(retOut []PBTestOut, out any) []PBTestOut {
+	if ok, failedpredicates := pbt.satisfyAll(out); !ok {
+		retOut = append(retOut, PBTestOut{
+			Output:     out,
+			Predicates: failedpredicates,
+			ok:         false,
+		})
+	} else {
+		retOut = append(retOut, PBTestOut{
+			Output:     out,
+			Predicates: nil,
+			ok:         true,
+		})
 	}
 	return retOut
 }
@@ -75,17 +79,17 @@ func createInstances(types []reflect.Type, isZero bool) []any {
 }
 
 func (pbt PBTest) applyFunction(args ...any) ([]any, error) {
-	if pbt.Func == nil {
+	if pbt.f == nil {
 		return nil, nil
 	}
-	return pbt.Func(args...), nil
+	return pbt.f(args...), nil
 }
 
 func (pbt PBTest) generateInputs() ([]any, error) {
-	if pbt.Func == nil {
+	if pbt.f == nil {
 		return nil, nil
 	}
-	inTypes, _ := extractFArgTypes(pbt.Func)
+	inTypes, _ := extractFArgTypes(pbt.f)
 	args := make([]any, len(inTypes))
 	for i, t := range inTypes {
 		v := reflect.New(t).Elem()

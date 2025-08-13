@@ -66,7 +66,7 @@ func (p IntMultipleOf) Verify(v any) bool {
 func (p IntInSet) Verify(v any) bool {
 	n, ok := asInt64(v)
 	if !ok {
-		return true
+		return false
 	}
 	return slices.Contains(p.Values, n)
 }
@@ -117,16 +117,17 @@ func (p UintNonZero) Verify(v any) bool {
 	return !ok || n != 0
 }
 func (p UintMultipleOf) Verify(v any) bool {
-	if p.K == 0 {
+	if p.K != 0 {
+		n, ok := asUint64(v)
+		return !ok || n%p.K == 0
+	} else {
 		return true
 	}
-	n, ok := asUint64(v)
-	return !ok || n%p.K == 0
 }
 func (p UintInSet) Verify(v any) bool {
 	n, ok := asUint64(v)
 	if !ok {
-		return true
+		return false
 	}
 	return slices.Contains(p.Values, n)
 }
@@ -578,6 +579,31 @@ func asUint64(v any) (uint64, bool) {
 		return uint64(x), true
 	case uint64:
 		return x, true
+	case int:
+		if x >= 0 {
+			return uint64(x), true
+		}
+		return 0, false
+	case int8:
+		if x >= 0 {
+			return uint64(x), true
+		}
+		return 0, false
+	case int16:
+		if x >= 0 {
+			return uint64(x), true
+		}
+		return 0, false
+	case int32:
+		if x >= 0 {
+			return uint64(x), true
+		}
+		return 0, false
+	case int64:
+		if x >= 0 {
+			return uint64(x), true
+		}
+		return 0, false
 	default:
 		return 0, false
 	}
