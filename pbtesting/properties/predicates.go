@@ -117,12 +117,11 @@ func (p UintNonZero) Verify(v any) bool {
 	return !ok || n != 0
 }
 func (p UintMultipleOf) Verify(v any) bool {
-	if p.K != 0 {
-		n, ok := asUint64(v)
-		return !ok || n%p.K == 0
-	} else {
+	if p.K == 0 {
 		return true
 	}
+	n, ok := asUint64(v)
+	return !ok || n%p.K == 0
 }
 func (p UintInSet) Verify(v any) bool {
 	n, ok := asUint64(v)
@@ -244,7 +243,6 @@ func (p ComplexAllowInf) Verify(v any) bool {
 type StringLenMin struct{ Min int }
 type StringLenMax struct{ Max int }
 type StringLenRange struct{ Min, Max int }
-type StringAllowedRunes struct{ Runes []rune }
 type StringRegex struct{ Pattern string }
 type StringPrefix struct{ Prefix string }
 type StringSuffix struct{ Suffix string }
@@ -256,25 +254,12 @@ func (p StringLenRange) Verify(v any) bool {
 	s, ok := v.(string)
 	return !ok || (len(s) >= p.Min && len(s) <= p.Max)
 }
-func (p StringAllowedRunes) Verify(v any) bool {
-	s, ok := v.(string)
-	if !ok || len(p.Runes) == 0 {
-		return true
-	}
-	allowed := make(map[rune]struct{}, len(p.Runes))
-	for _, r := range p.Runes {
-		allowed[r] = struct{}{}
-	}
-	for _, r := range s {
-		if _, ok := allowed[r]; !ok {
-			return false
-		}
-	}
-	return true
-}
 func (p StringRegex) Verify(v any) bool {
 	s, ok := v.(string)
-	if !ok || p.Pattern == "" {
+	if !ok {
+		return false
+	}
+	if p.Pattern == "" {
 		return true
 	}
 	re, err := regexp.Compile(p.Pattern)
@@ -307,47 +292,30 @@ type SliceElementPredicates struct{ Props []Predicate }
 func (p SliceLenMin) Verify(v any) bool {
 	reflectValue := reflect.ValueOf(v)
 	if reflectValue.Kind() != reflect.Slice {
-		return true
+		return false
 	}
 	return reflectValue.Len() >= p.Min
 }
 func (p SliceLenMax) Verify(v any) bool {
 	reflectValue := reflect.ValueOf(v)
 	if reflectValue.Kind() != reflect.Slice {
-		return true
+		return false
 	}
 	return reflectValue.Len() <= p.Max
 }
 func (p SliceLenRange) Verify(v any) bool {
 	reflectValue := reflect.ValueOf(v)
 	if reflectValue.Kind() != reflect.Slice {
-		return true
+		return false
 	}
 	return reflectValue.Len() >= p.Min && reflectValue.Len() <= p.Max
 }
-func (p SliceUnique) Verify(v any) bool {
-	if !p.Enabled {
-		return true
-	}
-	reflectValue := reflect.ValueOf(v)
-	if reflectValue.Kind() != reflect.Slice {
-		return true
-	}
-	seen := map[any]struct{}{}
-	for i := 0; i < reflectValue.Len(); i++ {
-		elem := reflectValue.Index(i).Interface()
-		if isHashable(reflectValue.Index(i)) {
-			if _, ok := seen[elem]; ok {
-				return false
-			}
-			seen[elem] = struct{}{}
-		}
-	}
-	return true
-}
 func (p SliceElementPredicates) Verify(v any) bool {
 	reflectValue := reflect.ValueOf(v)
-	if reflectValue.Kind() != reflect.Slice || len(p.Props) == 0 {
+	if reflectValue.Kind() != reflect.Slice {
+		return false
+	}
+	if len(p.Props) == 0 {
 		return true
 	}
 	for i := 0; i < reflectValue.Len(); i++ {
@@ -367,7 +335,10 @@ type ArraySorted struct{ Enabled bool }
 
 func (p ArrayElementPredicates) Verify(v any) bool {
 	reflectValue := reflect.ValueOf(v)
-	if reflectValue.Kind() != reflect.Array || len(p.Props) == 0 {
+	if reflectValue.Kind() != reflect.Array {
+		return false
+	}
+	if len(p.Props) == 0 {
 		return true
 	}
 	for i := 0; i < reflectValue.Len(); i++ {
@@ -384,7 +355,10 @@ func (p ArraySorted) Verify(v any) bool {
 		return true
 	}
 	reflectValue := reflect.ValueOf(v)
-	if reflectValue.Kind() != reflect.Array || reflectValue.Len() < 2 {
+	if reflectValue.Kind() != reflect.Array {
+		return false
+	}
+	if reflectValue.Len() < 2 {
 		return true
 	}
 	for i := 1; i < reflectValue.Len(); i++ {
@@ -406,27 +380,30 @@ type MapValuePredicates struct{ Props []Predicate }
 func (p MapSizeMin) Verify(v any) bool {
 	reflectValue := reflect.ValueOf(v)
 	if reflectValue.Kind() != reflect.Map {
-		return true
+		return false
 	}
 	return reflectValue.Len() >= p.Min
 }
 func (p MapSizeMax) Verify(v any) bool {
 	reflectValue := reflect.ValueOf(v)
 	if reflectValue.Kind() != reflect.Map {
-		return true
+		return false
 	}
 	return reflectValue.Len() <= p.Max
 }
 func (p MapSizeRange) Verify(v any) bool {
 	reflectValue := reflect.ValueOf(v)
 	if reflectValue.Kind() != reflect.Map {
-		return true
+		return false
 	}
 	return reflectValue.Len() >= p.Min && reflectValue.Len() <= p.Max
 }
 func (p MapKeyPredicates) Verify(v any) bool {
 	reflectValue := reflect.ValueOf(v)
-	if reflectValue.Kind() != reflect.Map || len(p.Props) == 0 {
+	if reflectValue.Kind() != reflect.Map {
+		return false
+	}
+	if len(p.Props) == 0 {
 		return true
 	}
 	iter := reflectValue.MapRange()
@@ -442,7 +419,10 @@ func (p MapKeyPredicates) Verify(v any) bool {
 }
 func (p MapValuePredicates) Verify(v any) bool {
 	reflectValue := reflect.ValueOf(v)
-	if reflectValue.Kind() != reflect.Map || len(p.Props) == 0 {
+	if reflectValue.Kind() != reflect.Map {
+		return false
+	}
+	if len(p.Props) == 0 {
 		return true
 	}
 	iter := reflectValue.MapRange()
@@ -467,6 +447,9 @@ func (p StructFieldPredicates) Verify(v any) bool {
 	}
 	reflectValue := reflect.ValueOf(v)
 	if reflectValue.Kind() == reflect.Pointer {
+		if reflectValue.IsNil() {
+			return true
+		}
 		reflectValue = reflectValue.Elem()
 	}
 	if reflectValue.Kind() != reflect.Struct {

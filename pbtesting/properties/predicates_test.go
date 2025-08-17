@@ -4,9 +4,17 @@ import (
 	"math"
 	"reflect"
 	"testing"
+
+	"github.com/laiambryant/gotestutils/ctesting"
 )
 
 func assertProp(t *testing.T, p Predicate, val any, expect bool) {
+	if p == nil {
+		if !expect {
+			t.Fatalf("nil predicate expected=%v but treated as true", expect)
+		}
+		return
+	}
 	name := reflect.TypeOf(p).Name()
 	got := p.Verify(val)
 	if got != expect {
@@ -82,11 +90,13 @@ func TestUintProperties(t *testing.T) {
 	assertProp(t, UintInSet{Values: []uint64{1, 2, 3}}, uint8(2), true)
 	assertProp(t, UintInSet{Values: []uint64{1, 2, 3}}, uint16(4), false)
 	assertProp(t, UintInSet{Values: []uint64{1, 2, 3}}, int(4), false)
+	assertProp(t, UintInSet{Values: []uint64{1, 2, 3}}, "johnny", false)
+	assertProp(t, UintNotInSet{Values: []uint64{1, 2, 3}}, "joestar", true)
 	assertProp(t, UintNotInSet{Values: []uint64{1, 2, 3}}, int8(2), false)
 	assertProp(t, UintNotInSet{Values: []uint64{1, 2, 3}}, int16(2), false)
 	assertProp(t, UintNotInSet{Values: []uint64{1, 2, 3}}, int32(4), true)
 	assertProp(t, UintCanIncludeZero{Allowed: false}, int64(0), false)
-	assertProp(t, UintCanIncludeZero{Allowed: false}, uint(1), true)
+	assertProp(t, UintCanIncludeZero{Allowed: true}, uint(1), true)
 }
 
 func TestFloatProperties(t *testing.T) {
@@ -98,11 +108,15 @@ func TestFloatProperties(t *testing.T) {
 	assertProp(t, FloatRange{Min: 1, Max: 2}, 1.5, true)
 	assertProp(t, FloatNonZero{Required: true}, 0.0, false)
 	assertProp(t, FloatNonZero{Required: true}, 0.1, true)
+	assertProp(t, FloatNonZero{Required: false}, 0.1, true)
 	assertProp(t, FloatFiniteOnly{Enabled: true}, math.NaN(), false)
 	assertProp(t, FloatFiniteOnly{Enabled: true}, math.Inf(1), false)
+	assertProp(t, FloatFiniteOnly{Enabled: false}, math.Inf(1), true)
 	assertProp(t, FloatFiniteOnly{Enabled: true}, 3.14, true)
 	assertProp(t, FloatAllowNaN{Allowed: false}, math.NaN(), false)
+	assertProp(t, FloatAllowNaN{Allowed: true}, math.NaN(), true)
 	assertProp(t, FloatAllowInf{Allowed: false}, math.Inf(-1), false)
+	assertProp(t, FloatAllowInf{Allowed: true}, math.Inf(-1), true)
 	assertProp(t, FloatPrecisionMax{Decimals: 2}, 1.23, true)
 	assertProp(t, FloatPrecisionMax{Decimals: 2}, "sw", true)
 	assertProp(t, FloatPrecisionMax{Decimals: 2}, 1.234, false)
@@ -116,9 +130,10 @@ func TestComplexProperties(t *testing.T) {
 	assertProp(t, ComplexMagnitudeRange{Min: 0, Max: 2}, complex(2, 0), true)
 	assertProp(t, ComplexMagnitudeRange{Min: 0, Max: 1}, complex(1, 1), false)
 	assertProp(t, ComplexAllowNaN{Allowed: false}, complex(math.NaN(), 0), false)
+	assertProp(t, ComplexAllowNaN{Allowed: true}, complex(math.NaN(), 0), true)
 	assertProp(t, ComplexAllowInf{Allowed: false}, complex(math.Inf(1), 0), false)
+	assertProp(t, ComplexAllowInf{Allowed: true}, complex(math.Inf(1), 0), true)
 	assertProp(t, ComplexMagnitudeRange{Min: 0, Max: 2}, "dsada", true)
-
 }
 
 func TestStringProperties(t *testing.T) {
@@ -128,10 +143,9 @@ func TestStringProperties(t *testing.T) {
 	assertProp(t, StringLenMax{Max: 3}, "abc", true)
 	assertProp(t, StringLenRange{Min: 2, Max: 3}, "a", false)
 	assertProp(t, StringLenRange{Min: 2, Max: 3}, "ab", true)
-	assertProp(t, StringAllowedRunes{Runes: []rune{'a', 'b', 'c'}}, "abcd", false)
-	assertProp(t, StringAllowedRunes{Runes: []rune{'a', 'b', 'c'}}, "bca", true)
 	assertProp(t, StringRegex{Pattern: "^a.+z$"}, "abz", true)
 	assertProp(t, StringRegex{Pattern: "^a.+z$"}, "ax", false)
+	assertProp(t, StringRegex{Pattern: "((a){10000})"}, 1, false)
 	assertProp(t, StringPrefix{Prefix: "pre"}, "prefix", true)
 	assertProp(t, StringPrefix{Prefix: "pre"}, "xprefix", false)
 	assertProp(t, StringSuffix{Suffix: "suf"}, "endsuf", true)
@@ -143,15 +157,17 @@ func TestStringProperties(t *testing.T) {
 func TestSliceProperties(t *testing.T) {
 	assertProp(t, SliceLenMin{Min: 3}, []int{1, 2}, false)
 	assertProp(t, SliceLenMin{Min: 3}, []int{1, 2, 3}, true)
+	assertProp(t, SliceLenMin{Min: 3}, "SASA", false)
 	assertProp(t, SliceLenMax{Max: 2}, []int{1, 2, 3}, false)
 	assertProp(t, SliceLenMax{Max: 3}, []int{1, 2, 3}, true)
+	assertProp(t, SliceLenMax{Max: 3}, "SASA", false)
 	assertProp(t, SliceLenRange{Min: 2, Max: 3}, []int{1}, false)
 	assertProp(t, SliceLenRange{Min: 2, Max: 3}, []int{1, 2}, true)
-	assertProp(t, SliceUnique{Enabled: true}, []int{1, 2, 1}, false)
-	assertProp(t, SliceUnique{Enabled: true}, []int{1, 2, 3}, true)
+	assertProp(t, SliceLenRange{Min: 2, Max: 3}, "", false)
 	props := []Predicate{IntMin{Min: 2}}
 	assertProp(t, SliceElementPredicates{Props: props}, []int{2, 3, 4}, true)
 	assertProp(t, SliceElementPredicates{Props: props}, []int{1, 3, 4}, false)
+	assertProp(t, SliceElementPredicates{Props: props}, "", false)
 }
 
 func TestArrayProperties(t *testing.T) {
@@ -160,16 +176,27 @@ func TestArrayProperties(t *testing.T) {
 	arrBad := [3]int{1, 3, 4}
 	assertProp(t, ArrayElementPredicates{Props: props}, arrGood, true)
 	assertProp(t, ArrayElementPredicates{Props: props}, arrBad, false)
+	assertProp(t, ArrayElementPredicates{Props: props}, "", false)
 	assertProp(t, ArraySorted{Enabled: true}, [3]int{1, 2, 3}, true)
 	assertProp(t, ArraySorted{Enabled: true}, [3]int{2, 1, 3}, false)
+	assertProp(t, ArraySorted{Enabled: false}, "", true)
+	assertProp(t, ArraySorted{Enabled: true}, "", false)
 }
 
 func TestMapProperties(t *testing.T) {
 	m := map[int]int{1: 2, 3: 4}
 	keyProps := []Predicate{IntMin{Min: 1}}
 	valProps := []Predicate{IntMax{Max: 4}}
+	assertProp(t, MapSizeMin{Min: 1}, m, true)
+	assertProp(t, MapSizeMin{Min: 1}, "x", false)
+	assertProp(t, MapSizeMax{Max: 5}, m, true)
+	assertProp(t, MapSizeMax{Max: 5}, "x", false)
+	assertProp(t, MapSizeRange{Max: 5}, m, true)
+	assertProp(t, MapSizeRange{Max: 5}, "x", false)
 	assertProp(t, MapKeyPredicates{Props: keyProps}, m, true)
+	assertProp(t, MapKeyPredicates{Props: keyProps}, "x", false)
 	assertProp(t, MapValuePredicates{Props: valProps}, m, true)
+	assertProp(t, MapValuePredicates{Props: valProps}, "", false)
 	assertProp(t, MapKeyPredicates{Props: []Predicate{IntMin{Min: 2}}}, m, false)
 	assertProp(t, MapValuePredicates{Props: []Predicate{IntMax{Max: 3}}}, m, false)
 }
@@ -187,6 +214,23 @@ func TestStructFieldProperties(t *testing.T) {
 	}}
 	assertProp(t, props, vGood, true)
 	assertProp(t, props, vBad, false)
+}
+
+func TestStructFieldPropertiesEdgeCases(t *testing.T) {
+	type S struct {
+		A int
+		B string
+	}
+	vGood := S{A: 5, B: "hello"}
+
+	props := StructFieldPredicates{Fields: map[string][]Predicate{
+		"A": {IntMin{Min: 3}},
+		"B": {StringLenMin{Min: 2}},
+		"C": {SliceElementPredicates{Props: nil}},
+	}}
+	assertProp(t, props, vGood, true)
+	assertProp(t, nil, vGood, true)
+
 }
 
 func TestPointerAllowNil(t *testing.T) {
@@ -212,4 +256,28 @@ func TestChanBufferProperties(t *testing.T) {
 	assertProp(t, ChanBufferMax{Max: 2}, ch, true)
 	assertProp(t, ChanBufferRange{Min: 1, Max: 2}, ch, true)
 	assertProp(t, ChanBufferRange{Min: 3, Max: 4}, ch, false)
+}
+
+func TestLessCharacterization(t *testing.T) {
+	suite := []ctesting.CharacterizationTest[bool]{
+		ctesting.NewCharacterizationTest(true, nil, func() (bool, error) { return less(1, 2), nil }),
+		ctesting.NewCharacterizationTest(false, nil, func() (bool, error) { return less(2, 1), nil }),
+		ctesting.NewCharacterizationTest(false, nil, func() (bool, error) { return less(2, 2), nil }),
+		ctesting.NewCharacterizationTest(true, nil, func() (bool, error) { return less(int8(1), int8(2)), nil }),
+		ctesting.NewCharacterizationTest(false, nil, func() (bool, error) { return less(int8(1), int16(2)), nil }),
+		ctesting.NewCharacterizationTest(true, nil, func() (bool, error) { return less(uint8(1), uint8(2)), nil }),
+		ctesting.NewCharacterizationTest(false, nil, func() (bool, error) { return less(uint8(1), uint16(2)), nil }),
+		ctesting.NewCharacterizationTest(true, nil, func() (bool, error) { return less(-1, 0), nil }),
+		ctesting.NewCharacterizationTest(false, nil, func() (bool, error) { return less(uint(1), int(2)), nil }),
+		ctesting.NewCharacterizationTest(true, nil, func() (bool, error) { return less("a", "b"), nil }),
+		ctesting.NewCharacterizationTest(false, nil, func() (bool, error) { return less("b", "a"), nil }),
+		ctesting.NewCharacterizationTest(false, nil, func() (bool, error) { return less("a", "a"), nil }),
+		ctesting.NewCharacterizationTest(true, nil, func() (bool, error) { return less(float32(1.1), float32(1.2)), nil }),
+		ctesting.NewCharacterizationTest(false, nil, func() (bool, error) { return less(float32(1.1), float64(1.2)), nil }),
+		ctesting.NewCharacterizationTest(false, nil, func() (bool, error) { return less([]int{1}, []int{1}), nil }),
+		ctesting.NewCharacterizationTest(false, nil, func() (bool, error) { return less(nil, nil), nil }),
+		ctesting.NewCharacterizationTest(false, nil, func() (bool, error) { return less(nil, 1), nil }),
+		ctesting.NewCharacterizationTest(false, nil, func() (bool, error) { return less(1, nil), nil }),
+	}
+	ctesting.VerifyCharacterizationTestsAndResults(t, suite, false)
 }

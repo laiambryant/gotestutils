@@ -88,7 +88,6 @@ func NewCharacterizationTest[t comparable](expectedOutput t, expectedError error
 //	results, testSuiteRes := VerifyCharacterizationTests(testSuite)
 func VerifyCharacterizationTests[t comparable](
 	testSuite []CharacterizationTest[t], isDeepErrorCheck bool) (res []bool, _ []CharacterizationTest[t]) {
-
 	for i, test := range testSuite {
 		output, err := test.F()
 		testSuite[i].output = output
