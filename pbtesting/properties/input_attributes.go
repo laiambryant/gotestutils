@@ -2,6 +2,8 @@ package properties
 
 import (
 	"reflect"
+
+	p "github.com/laiambryant/gotestutils/pbtesting/properties/predicates"
 )
 
 type Attributes interface {
@@ -66,7 +68,7 @@ type SliceAttributes struct {
 	MaxLen       int
 	Unique       bool
 	Sorted       bool
-	ElementPreds []Predicate
+	ElementPreds []p.Predicate
 	ElementAttrs any
 }
 
@@ -82,8 +84,8 @@ func (a BoolAttributes) GetAttributes() any { return a }
 type MapAttributes struct {
 	MinSize    int
 	MaxSize    int
-	KeyPreds   []Predicate
-	ValuePreds []Predicate
+	KeyPreds   []p.Predicate
+	ValuePreds []p.Predicate
 	KeyAttrs   any
 	ValueAttrs any
 }
@@ -130,7 +132,7 @@ type ArrayAttributes struct {
 	Length       int
 	Sorted       bool
 	ElementAttrs any
-	ElementPreds []Predicate
+	ElementPreds []p.Predicate
 }
 
 func (a ArrayAttributes) GetAttributes() any { return a }

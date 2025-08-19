@@ -3,7 +3,7 @@ package pbtesting
 import (
 	"fmt"
 
-	p "github.com/laiambryant/gotestutils/pbtesting/properties"
+	p "github.com/laiambryant/gotestutils/pbtesting/properties/predicates"
 )
 
 type InvalidPropertyError struct {

@@ -1,6 +1,8 @@
 module github.com/laiambryant/gotestutils/examples
 
-go 1.22.2
+go 1.23.0
+
+toolchain go1.24.5
 
 require github.com/laiambryant/gotestutils v0.0.0
 

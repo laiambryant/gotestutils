@@ -3,19 +3,19 @@ package pbtesting
 import (
 	"reflect"
 
-	s "github.com/laiambryant/gotestutils/pbtesting/properties"
+	p "github.com/laiambryant/gotestutils/pbtesting/properties/predicates"
 	"github.com/laiambryant/gotestutils/utils"
 )
 
 type PBTest struct {
 	f          func(...any) []any
-	predicates []s.Predicate
+	predicates []p.Predicate
 	iterations uint
 }
 
 type PBTestOut struct {
 	Output     any
-	Predicates []s.Predicate
+	Predicates []p.Predicate
 	ok         bool
 }
 
@@ -99,7 +99,7 @@ func (pbt PBTest) generateInputs() ([]any, error) {
 	return args, nil
 }
 
-func (pbt PBTest) satisfyAll(val any) (ok bool, failedpredicates []s.Predicate) {
+func (pbt PBTest) satisfyAll(val any) (ok bool, failedpredicates []p.Predicate) {
 	if len(pbt.predicates) == 0 {
 		return true, nil
 	}
