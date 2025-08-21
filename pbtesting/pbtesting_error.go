@@ -1,9 +1,15 @@
 package pbtesting
 
 import (
+	"errors"
 	"fmt"
 
 	p "github.com/laiambryant/gotestutils/pbtesting/properties/predicates"
+)
+
+var (
+	ErrZeroRangeNonZeroRequested = errors.New("zero range but non-zero requested")
+	ErrMinGreaterThanMax         = errors.New("minimum is greater than maximum")
 )
 
 type InvalidPropertyError struct {

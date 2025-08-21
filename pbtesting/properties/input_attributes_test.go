@@ -4,15 +4,17 @@ import (
 	"reflect"
 	"testing"
 
+	ctesting "github.com/laiambryant/gotestutils/ctesting"
 	p "github.com/laiambryant/gotestutils/pbtesting/properties/predicates"
 )
 
 func TestGetAttributesMethods(t *testing.T) {
-	cases := []struct {
+	type testCase struct {
 		name string
 		in   Attributes
 		want any
-	}{
+	}
+	cases := []testCase{
 		{"IntegerAttributes", IntegerAttributes{Signed: true, AllowNegative: true, AllowZero: true, Max: 10, Min: -5, EvenOnly: true, MultipleOf: 2, InSet: []int64{1, 2}, NotInSet: []int64{3}}, IntegerAttributes{Signed: true, AllowNegative: true, AllowZero: true, Max: 10, Min: -5, EvenOnly: true, MultipleOf: 2, InSet: []int64{1, 2}, NotInSet: []int64{3}}},
 		{"FloatAttributes", FloatAttributes{Min: 1.1, Max: 2.2, NonZero: true, FiniteOnly: true, AllowNaN: true, AllowInf: true, Precision: 3}, FloatAttributes{Min: 1.1, Max: 2.2, NonZero: true, FiniteOnly: true, AllowNaN: true, AllowInf: true, Precision: 3}},
 		{"ComplexAttributes", ComplexAttributes{RealMin: -1, RealMax: 1, ImagMin: -2, ImagMax: 2, MagnitudeMin: 0.5, MagnitudeMax: 10, AllowNaN: true, AllowInf: true}, ComplexAttributes{RealMin: -1, RealMax: 1, ImagMin: -2, ImagMax: 2, MagnitudeMin: 0.5, MagnitudeMax: 10, AllowNaN: true, AllowInf: true}},
@@ -27,22 +29,24 @@ func TestGetAttributesMethods(t *testing.T) {
 		{"StructAttributes", StructAttributes{FieldAttrs: map[string]any{"A": IntegerAttributes{}, "B": FloatAttributes{}}}, StructAttributes{FieldAttrs: map[string]any{"A": IntegerAttributes{}, "B": FloatAttributes{}}}},
 		{"ArrayAttributes", ArrayAttributes{Length: 3, Sorted: true, ElementAttrs: IntegerAttributes{}, ElementPreds: []p.Predicate{}}, ArrayAttributes{Length: 3, Sorted: true, ElementAttrs: IntegerAttributes{}, ElementPreds: []p.Predicate{}}},
 	}
-
+	var suite []ctesting.CharacterizationTest[bool]
 	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := tc.in.GetAttributes()
-			if reflect.TypeOf(got) != reflect.TypeOf(tc.want) {
-				t.Fatalf("expected type %T got %T", tc.want, got)
+		toExec := tc
+		suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+			got := toExec.in.GetAttributes()
+			if reflect.TypeOf(got) != reflect.TypeOf(toExec.want) {
+				return false, nil
 			}
-			if !reflect.DeepEqual(got, tc.want) {
-				t.Fatalf("mismatch for %s:\nexpected: %#v\n     got: %#v", tc.name, tc.want, got)
+			if !reflect.DeepEqual(got, toExec.want) {
+				return false, nil
 			}
-		})
+			return true, nil
+		}))
 	}
-}
-
-func TestAttributesInterfaceConformance(t *testing.T) {
-	_ = []Attributes{
-		IntegerAttributes{}, FloatAttributes{}, ComplexAttributes{}, StringAttributes{}, SliceAttributes{}, BoolAttributes{}, MapAttributes{}, ChanAttributes{}, FuncAttributes{}, InterfaceAttributes{}, PointerAttributes{}, StructAttributes{}, ArrayAttributes{},
+	results, _ := ctesting.VerifyCharacterizationTestsAndResults(t, suite, true)
+	for i, passed := range results {
+		if !passed {
+			t.Fatalf("characterization test %d failed", i+1)
+		}
 	}
 }

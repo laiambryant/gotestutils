@@ -3,6 +3,7 @@ package pbtesting
 import (
 	"reflect"
 
+	properties "github.com/laiambryant/gotestutils/pbtesting/properties"
 	p "github.com/laiambryant/gotestutils/pbtesting/properties/predicates"
 	"github.com/laiambryant/gotestutils/utils"
 )
@@ -11,6 +12,7 @@ type PBTest struct {
 	f          func(...any) []any
 	predicates []p.Predicate
 	iterations uint
+	argAttrs   []any // per-argument attributes; index aligns with function params
 }
 
 type PBTestOut struct {
@@ -19,11 +21,15 @@ type PBTestOut struct {
 	ok         bool
 }
 
-func NewPBTest(f func(...any) []any) *PBTest {
-	return &PBTest{}
-}
+func NewPBTest(f func(...any) []any) *PBTest { return &PBTest{f: f, iterations: 1} }
 
-func (pbt PBTest) Run() (retOut []PBTestOut) {
+func (pbt *PBTest) WithIterations(n uint) *PBTest { pbt.iterations = n; return pbt }
+
+func (pbt *PBTest) WithPredicates(preds ...p.Predicate) *PBTest { pbt.predicates = preds; return pbt }
+
+func (pbt *PBTest) WithArgAttributes(attrs ...any) *PBTest { pbt.argAttrs = attrs; return pbt }
+
+func (pbt *PBTest) Run() (retOut []PBTestOut) {
 	for i := uint(0); i < pbt.iterations; i++ {
 		inputs, _ := pbt.generateInputs()
 		outs, _ := pbt.applyFunction(inputs...)
@@ -78,28 +84,37 @@ func createInstances(types []reflect.Type, isZero bool) []any {
 	return instances
 }
 
-func (pbt PBTest) applyFunction(args ...any) ([]any, error) {
+func (pbt *PBTest) applyFunction(args ...any) ([]any, error) {
 	if pbt.f == nil {
 		return nil, nil
 	}
 	return pbt.f(args...), nil
 }
 
-func (pbt PBTest) generateInputs() ([]any, error) {
+func (pbt *PBTest) generateInputs() ([]any, error) {
 	if pbt.f == nil {
 		return nil, nil
 	}
 	inTypes, _ := extractFArgTypes(pbt.f)
 	args := make([]any, len(inTypes))
 	for i, t := range inTypes {
-		v := reflect.New(t).Elem()
-		getRandomValue(v)
-		args[i] = v.Interface()
+		var attr any
+		if i < len(pbt.argAttrs) {
+			attr = pbt.argAttrs[i]
+			if a, ok := attr.(properties.Attributes); ok {
+				attr = a.GetAttributes()
+			}
+		}
+		val, err := generateValueForTypeWithAttr(t, attr, 0)
+		if err != nil {
+			return nil, err
+		}
+		args[i] = val.Interface()
 	}
 	return args, nil
 }
 
-func (pbt PBTest) satisfyAll(val any) (ok bool, failedpredicates []p.Predicate) {
+func (pbt *PBTest) satisfyAll(val any) (ok bool, failedpredicates []p.Predicate) {
 	if len(pbt.predicates) == 0 {
 		return true, nil
 	}
@@ -114,7 +129,7 @@ func (pbt PBTest) satisfyAll(val any) (ok bool, failedpredicates []p.Predicate) 
 	return true, nil
 }
 
-func (pbt PBTest) haspredicates() bool {
+func (pbt *PBTest) haspredicates() bool {
 	return pbt.predicates != nil
 }
 
