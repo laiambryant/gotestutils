@@ -33,8 +33,21 @@ func (mt MTAttributes) GetAttributeGivenType(t reflect.Type) (retA Attributes) {
 		reflect.Interface: mt.INA, reflect.Ptr: mt.PA, reflect.Struct: mt.STA, reflect.Array: mt.ARA,
 	}
 	retA = kindMap[t.Kind()]
-	if retA == reflect.Zero(reflect.TypeOf(retA)).Interface() {
-		retA = retA.GetDefaultImplementation()
+	if retA != nil {
+		attrsVal := retA.GetAttributes()
+		if attrsVal == nil {
+			retA = retA.GetDefaultImplementation()
+			return
+		}
+		at := reflect.TypeOf(attrsVal)
+		if at == nil {
+			retA = retA.GetDefaultImplementation()
+			return
+		}
+		zero := reflect.Zero(at).Interface()
+		if reflect.DeepEqual(attrsVal, zero) {
+			retA = retA.GetDefaultImplementation()
+		}
 	}
 	return
 }
