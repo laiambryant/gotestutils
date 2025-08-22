@@ -1,18 +1,19 @@
 package pbtesting
 
 import (
-	"reflect"
+	"testing"
 
-	properties "github.com/laiambryant/gotestutils/pbtesting/properties"
+	"github.com/laiambryant/gotestutils/mtesting"
 	p "github.com/laiambryant/gotestutils/pbtesting/properties/predicates"
 	"github.com/laiambryant/gotestutils/utils"
 )
 
 type PBTest struct {
+	t          *testing.T
 	f          func(...any) []any
 	predicates []p.Predicate
 	iterations uint
-	argAttrs   []any // per-argument attributes; index aligns with function params
+	argAttrs   []any
 }
 
 type PBTestOut struct {
@@ -31,7 +32,8 @@ func (pbt *PBTest) WithArgAttributes(attrs ...any) *PBTest { pbt.argAttrs = attr
 
 func (pbt *PBTest) Run() (retOut []PBTestOut) {
 	for i := uint(0); i < pbt.iterations; i++ {
-		inputs, _ := pbt.generateInputs()
+		monkeyTest := (&mtesting.MTesting{}).WithFunction(pbt.f)
+		inputs, _ := monkeyTest.GenerateInputs()
 		outs, _ := pbt.applyFunction(inputs...)
 		if pbt.haspredicates() {
 			for _, out := range outs {
@@ -59,59 +61,11 @@ func (pbt PBTest) validatePredicates(retOut []PBTestOut, out any) []PBTestOut {
 	return retOut
 }
 
-func extractFArgTypes(f any) (inputTypes []reflect.Type, ouputTypes []reflect.Type) {
-	types := reflect.TypeOf(f)
-	for i := 0; i < types.NumIn(); i++ {
-		inputTypes = append(inputTypes, types.In(i))
-	}
-	for i := 0; i < types.NumOut(); i++ {
-		ouputTypes = append(ouputTypes, types.Out(i))
-	}
-	return
-}
-
-func createInstances(types []reflect.Type, isZero bool) []any {
-	instances := make([]any, len(types))
-	for i, t := range types {
-		newValue := reflect.New(t).Elem()
-		if isZero {
-			instances[i] = newValue.Interface()
-			continue
-		}
-		getRandomValue(newValue)
-		instances[i] = newValue.Interface()
-	}
-	return instances
-}
-
 func (pbt *PBTest) applyFunction(args ...any) ([]any, error) {
 	if pbt.f == nil {
 		return nil, nil
 	}
 	return pbt.f(args...), nil
-}
-
-func (pbt *PBTest) generateInputs() ([]any, error) {
-	if pbt.f == nil {
-		return nil, nil
-	}
-	inTypes, _ := extractFArgTypes(pbt.f)
-	args := make([]any, len(inTypes))
-	for i, t := range inTypes {
-		var attr any
-		if i < len(pbt.argAttrs) {
-			attr = pbt.argAttrs[i]
-			if a, ok := attr.(properties.Attributes); ok {
-				attr = a.GetAttributes()
-			}
-		}
-		val, err := generateValueForTypeWithAttr(t, attr, 0)
-		if err != nil {
-			return nil, err
-		}
-		args[i] = val.Interface()
-	}
-	return args, nil
 }
 
 func (pbt *PBTest) satisfyAll(val any) (ok bool, failedpredicates []p.Predicate) {

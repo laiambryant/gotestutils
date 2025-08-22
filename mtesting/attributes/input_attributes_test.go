@@ -1,4 +1,4 @@
-package properties
+package attributes
 
 import (
 	"reflect"
@@ -27,7 +27,7 @@ func TestGetAttributesMethods(t *testing.T) {
 		{"InterfaceAttributes", InterfaceAttributes{AllowedConcrete: []reflect.Type{reflect.TypeOf(1), reflect.TypeOf("")}}, InterfaceAttributes{AllowedConcrete: []reflect.Type{reflect.TypeOf(1), reflect.TypeOf("")}}},
 		{"PointerAttributes", PointerAttributes{AllowNil: true, Depth: 2, Inner: IntegerAttributes{}}, PointerAttributes{AllowNil: true, Depth: 2, Inner: IntegerAttributes{}}},
 		{"StructAttributes", StructAttributes{FieldAttrs: map[string]any{"A": IntegerAttributes{}, "B": FloatAttributes{}}}, StructAttributes{FieldAttrs: map[string]any{"A": IntegerAttributes{}, "B": FloatAttributes{}}}},
-		{"ArrayAttributes", ArrayAttributes{Length: 3, Sorted: true, ElementAttrs: IntegerAttributes{}, ElementPreds: []p.Predicate{}}, ArrayAttributes{Length: 3, Sorted: true, ElementAttrs: IntegerAttributes{}, ElementPreds: []p.Predicate{}}},
+		{"ArrayAttributes", ArrayAttributes{Length: 3, Sorted: true, ElementAttrs: IntegerAttributes{}}, ArrayAttributes{Length: 3, Sorted: true, ElementAttrs: IntegerAttributes{}}},
 	}
 	var suite []ctesting.CharacterizationTest[bool]
 	for _, tc := range cases {
