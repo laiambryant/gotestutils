@@ -32,7 +32,7 @@ func (pbt *PBTest) WithArgAttributes(attrs ...any) *PBTest { pbt.argAttrs = attr
 
 func (pbt *PBTest) Run() (retOut []PBTestOut) {
 	for i := uint(0); i < pbt.iterations; i++ {
-		monkeyTest := (&mtesting.MTesting[int]{}).WithFunction(pbt.f)
+		monkeyTest := (&mtesting.MTesting{}).WithFunction(pbt.f)
 		inputs, _ := monkeyTest.GenerateInputs()
 		outs, _ := pbt.applyFunction(inputs...)
 		if pbt.haspredicates() {
