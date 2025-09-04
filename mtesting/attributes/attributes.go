@@ -56,6 +56,76 @@ type Attributes interface {
 	GetAttributes() any
 	GetReflectType() reflect.Type
 	GetDefaultImplementation() Attributes
+	GetRandomValue() any
+}
+
+type Integers interface {
+	int | int8 | int16 | int32 | int64
+}
+
+type IntegerAttributes[T Integers] struct {
+	AllowNegative bool
+	AllowZero     bool
+	Max           T
+	Min           T
+	InSet         []T
+	NotInSet      []T
+}
+
+func (a IntegerAttributes[T]) GetAttributes() any { return a }
+func (a IntegerAttributes[T]) GetReflectType() reflect.Type {
+	return reflect.TypeOf(*new(T))
+}
+
+func (a IntegerAttributes[T]) GetDefaultImplementation() Attributes {
+	return IntegerAttributes[T]{
+		AllowNegative: true,
+		AllowZero:     true,
+		Max:           100,
+		Min:           -100,
+	}
+}
+
+func (a IntegerAttributes[T]) GetRandomValue() any {
+	// TODO: Implement random value generation
+	return nil
+}
+
+type UnsignedIntegers interface {
+	uint | uint8 | uint16 | uint32 | uint64
+}
+
+type UnsignedIntegerAttributes[T UnsignedIntegers] struct {
+	Signed        bool
+	AllowNegative bool
+	AllowZero     bool
+	Max           T
+	Min           T
+	InSet         []T
+	NotInSet      []T
+}
+
+func (a UnsignedIntegerAttributes[T]) GetAttributes() any { return a }
+func (a UnsignedIntegerAttributes[T]) GetReflectType() reflect.Type {
+	if a.Signed || a.AllowNegative {
+		return reflect.TypeOf(int64(0))
+	}
+	return reflect.TypeOf(uint64(0))
+}
+
+func (a UnsignedIntegerAttributes[T]) GetDefaultImplementation() Attributes {
+	return UnsignedIntegerAttributes[T]{
+		Signed:        true,
+		AllowNegative: true,
+		AllowZero:     true,
+		Max:           100,
+		Min:           0,
+	}
+}
+
+func (a UnsignedIntegerAttributes[T]) GetRandomValue() any {
+	// TODO: Implement random value generation
+	return nil
 }
 
 type Floats interface {
@@ -83,6 +153,11 @@ func (a FloatAttributes[T]) GetDefaultImplementation() Attributes {
 	}
 }
 
+func (a FloatAttributes[T]) GetRandomValue() any {
+	// TODO: Implement random value generation
+	return nil
+}
+
 type Complex interface {
 	complex64 | complex128
 }
@@ -94,6 +169,8 @@ type ComplexAttributes[T Complex] struct {
 	ImagMax      float64
 	MagnitudeMin float64
 	MagnitudeMax float64
+	MaxComplex   T
+	MinComplex   T
 	AllowNaN     bool
 	AllowInf     bool
 }
@@ -107,6 +184,11 @@ func (a ComplexAttributes[T]) GetDefaultImplementation() Attributes {
 		ImagMin: -10.0,
 		ImagMax: 10.0,
 	}
+}
+
+func (a ComplexAttributes[T]) GetRandomValue() any {
+	// TODO: Implement random value generation
+	return nil
 }
 
 type StringAttributes struct {
@@ -127,6 +209,11 @@ func (a StringAttributes) GetDefaultImplementation() Attributes {
 		MinLen: 1,
 		MaxLen: 10,
 	}
+}
+
+func (a StringAttributes) GetRandomValue() any {
+	// TODO: Implement random value generation
+	return nil
 }
 
 type SliceAttributes struct {
@@ -163,6 +250,11 @@ func (a SliceAttributes) GetDefaultImplementation() Attributes {
 	}
 }
 
+func (a SliceAttributes) GetRandomValue() any {
+	// TODO: Implement random value generation
+	return nil
+}
+
 type BoolAttributes struct {
 	ForceTrue  bool
 	ForceFalse bool
@@ -174,6 +266,11 @@ func (a BoolAttributes) GetDefaultImplementation() Attributes {
 	return BoolAttributes{
 		ForceTrue: false,
 	}
+}
+
+func (a BoolAttributes) GetRandomValue() any {
+	// TODO: Implement random value generation
+	return nil
 }
 
 type MapAttributes struct {
@@ -218,6 +315,11 @@ func (a MapAttributes) GetDefaultImplementation() Attributes {
 	}
 }
 
+func (a MapAttributes) GetRandomValue() any {
+	// TODO: Implement random value generation
+	return nil
+}
+
 type ChanAttributes struct {
 	MinBuffer int
 	MaxBuffer int
@@ -247,6 +349,11 @@ func (a ChanAttributes) GetDefaultImplementation() Attributes {
 	}
 }
 
+func (a ChanAttributes) GetRandomValue() any {
+	// TODO: Implement random value generation
+	return nil
+}
+
 type FuncAttributes struct {
 	Deterministic    bool
 	PanicProbability float64
@@ -259,6 +366,11 @@ func (a FuncAttributes) GetDefaultImplementation() Attributes {
 	return FuncAttributes{
 		Deterministic: true,
 	}
+}
+
+func (a FuncAttributes) GetRandomValue() any {
+	// TODO: Implement random value generation
+	return nil
 }
 
 type InterfaceAttributes struct {
@@ -277,6 +389,11 @@ func (a InterfaceAttributes) GetDefaultImplementation() Attributes {
 			reflect.TypeOf(""),
 		},
 	}
+}
+
+func (a InterfaceAttributes) GetRandomValue() any {
+	// TODO: Implement random value generation
+	return nil
 }
 
 type PointerAttributes struct {
@@ -314,6 +431,11 @@ func (a PointerAttributes) GetDefaultImplementation() Attributes {
 		Depth:    1,
 		Inner:    IntegerAttributes[int]{},
 	}
+}
+
+func (a PointerAttributes) GetRandomValue() any {
+	// TODO: Implement random value generation
+	return nil
 }
 
 type StructAttributes struct {
@@ -358,6 +480,11 @@ func (a StructAttributes) GetDefaultImplementation() Attributes {
 	}
 }
 
+func (a StructAttributes) GetRandomValue() any {
+	// TODO: Implement random value generation
+	return nil
+}
+
 type ArrayAttributes struct {
 	Length       int
 	Sorted       bool
@@ -387,4 +514,9 @@ func (a ArrayAttributes) GetDefaultImplementation() Attributes {
 		Length:       5,
 		ElementAttrs: IntegerAttributes[int]{},
 	}
+}
+
+func (a ArrayAttributes) GetRandomValue() any {
+	// TODO: Implement random value generation
+	return nil
 }

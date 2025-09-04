@@ -105,7 +105,7 @@ func RunStressTest[fRetType comparable, testVarType comparable](
 func RunParallelStressTest[fRetType comparable, testVarType comparable](
 	stressTest *StressTest[fRetType, testVarType],
 	maxWorkers uint32,
-) (success bool, r_err error) {
+) (success bool, rErr error) {
 	errchan, jobs := make(chan error, stressTest.iterations), make(chan uint32)
 	var wg sync.WaitGroup
 	wg.Add(int(maxWorkers))
@@ -122,10 +122,10 @@ func RunParallelStressTest[fRetType comparable, testVarType comparable](
 		close(jobs)
 	}()
 	for range stressTest.iterations {
-		if r_err = <-errchan; r_err != nil {
+		if rErr = <-errchan; rErr != nil {
 			wg.Wait()
 			close(errchan)
-			if ste, ok := r_err.(StressTestingError); ok {
+			if ste, ok := rErr.(StressTestingError); ok {
 				return false, ste
 			}
 		}
