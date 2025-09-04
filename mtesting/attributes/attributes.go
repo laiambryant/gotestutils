@@ -74,20 +74,35 @@ func (a IntegerAttributesImpl[T]) GetDefaultImplementation() Attributes {
 
 func (a IntegerAttributesImpl[T]) GetRandomValue() any {
 	var zero T
-	if a.Max > zero && a.Min <= a.Max {
-		minVal := reflect.ValueOf(a.Min)
-		maxVal := reflect.ValueOf(a.Max)
-
-		min := minVal.Int()
-		max := maxVal.Int()
-
-		if max > min {
-			result := min + rand.Int63n(max-min+1)
-			resultVal := reflect.ValueOf(result).Convert(reflect.TypeOf(zero))
-			return resultVal.Interface()
-		}
+	if !a.isValidRange(zero) {
+		return zero
 	}
-	return zero
+
+	min, max := a.getMinMaxAsInt64()
+	if max <= min {
+		return zero
+	}
+
+	return a.generateRandomInteger(min, max, zero)
+}
+
+// isValidRange checks if the min/max range is valid
+func (a IntegerAttributesImpl[T]) isValidRange(zero T) bool {
+	return a.Max > zero && a.Min <= a.Max
+}
+
+// getMinMaxAsInt64 converts min and max to int64 for calculation
+func (a IntegerAttributesImpl[T]) getMinMaxAsInt64() (int64, int64) {
+	minVal := reflect.ValueOf(a.Min)
+	maxVal := reflect.ValueOf(a.Max)
+	return minVal.Int(), maxVal.Int()
+}
+
+// generateRandomInteger generates a random integer within the range and converts back to type T
+func (a IntegerAttributesImpl[T]) generateRandomInteger(min, max int64, zero T) any {
+	result := min + rand.Int63n(max-min+1)
+	resultVal := reflect.ValueOf(result).Convert(reflect.TypeOf(zero))
+	return resultVal.Interface()
 }
 
 type UnsignedIntegerAttributesImpl[T UnsignedIntegers] struct {
@@ -118,21 +133,37 @@ func (a UnsignedIntegerAttributesImpl[T]) GetDefaultImplementation() Attributes 
 
 func (a UnsignedIntegerAttributesImpl[T]) GetRandomValue() any {
 	var zero T
-	if a.Max > zero && a.Min <= a.Max {
-		minVal := reflect.ValueOf(a.Min)
-		maxVal := reflect.ValueOf(a.Max)
+	if !a.isValidRange(zero) {
+		return zero
+	}
 
-		min := minVal.Uint()
-		max := maxVal.Uint()
+	min, max := a.getMinMaxAsUint64()
+	if max <= min {
+		return zero
+	}
 
-		if max > min {
-			diff := max - min + 1
-			if diff > 0 {
-				result := min + uint64(rand.Int63n(int64(diff)))
-				resultVal := reflect.ValueOf(result).Convert(reflect.TypeOf(zero))
-				return resultVal.Interface()
-			}
-		}
+	return a.generateRandomUnsignedInteger(min, max, zero)
+}
+
+// isValidRange checks if the min/max range is valid
+func (a UnsignedIntegerAttributesImpl[T]) isValidRange(zero T) bool {
+	return a.Max > zero && a.Min <= a.Max
+}
+
+// getMinMaxAsUint64 converts min and max to uint64 for calculation
+func (a UnsignedIntegerAttributesImpl[T]) getMinMaxAsUint64() (uint64, uint64) {
+	minVal := reflect.ValueOf(a.Min)
+	maxVal := reflect.ValueOf(a.Max)
+	return minVal.Uint(), maxVal.Uint()
+}
+
+// generateRandomUnsignedInteger generates a random unsigned integer within the range and converts back to type T
+func (a UnsignedIntegerAttributesImpl[T]) generateRandomUnsignedInteger(min, max uint64, zero T) any {
+	diff := max - min + 1
+	if diff > 0 {
+		result := min + uint64(rand.Int63n(int64(diff)))
+		resultVal := reflect.ValueOf(result).Convert(reflect.TypeOf(zero))
+		return resultVal.Interface()
 	}
 	return zero
 }
@@ -160,19 +191,36 @@ func (a FloatAttributesImpl[T]) GetDefaultImplementation() Attributes {
 
 func (a FloatAttributesImpl[T]) GetRandomValue() any {
 	var zero T
-	if a.Max > a.Min {
-		minVal := reflect.ValueOf(a.Min)
-		maxVal := reflect.ValueOf(a.Max)
-
-		min := minVal.Float()
-		max := maxVal.Float()
-
-		result := min + rand.Float64()*(max-min)
-
-		resultVal := reflect.ValueOf(result).Convert(reflect.TypeOf(zero))
-		return resultVal.Interface()
+	if !a.isValidRange() {
+		return zero
 	}
-	return zero
+
+	min, max := a.getMinMaxAsFloat64()
+	result := a.generateRandomFloat(min, max)
+	return a.convertToTargetType(result, zero)
+}
+
+// isValidRange checks if the min/max range is valid
+func (a FloatAttributesImpl[T]) isValidRange() bool {
+	return a.Max > a.Min
+}
+
+// getMinMaxAsFloat64 converts min and max to float64 for calculation
+func (a FloatAttributesImpl[T]) getMinMaxAsFloat64() (float64, float64) {
+	minVal := reflect.ValueOf(a.Min)
+	maxVal := reflect.ValueOf(a.Max)
+	return minVal.Float(), maxVal.Float()
+}
+
+// generateRandomFloat generates a random float within the range
+func (a FloatAttributesImpl[T]) generateRandomFloat(min, max float64) float64 {
+	return min + rand.Float64()*(max-min)
+}
+
+// convertToTargetType converts the result back to the target type T
+func (a FloatAttributesImpl[T]) convertToTargetType(result float64, zero T) any {
+	resultVal := reflect.ValueOf(result).Convert(reflect.TypeOf(zero))
+	return resultVal.Interface()
 }
 
 type ComplexAttributesImpl[T Complex] struct {
@@ -201,24 +249,39 @@ func (a ComplexAttributesImpl[T]) GetDefaultImplementation() Attributes {
 
 func (a ComplexAttributesImpl[T]) GetRandomValue() any {
 	var zero T
+	realMin, realMax, imagMin, imagMax := a.getBounds()
+	realPart := a.generateRandomReal(realMin, realMax)
+	imagPart := a.generateRandomImaginary(imagMin, imagMax)
+	return a.createComplexValue(realPart, imagPart, zero)
+}
 
-	realMin := a.RealMin
-	realMax := a.RealMax
-	imagMin := a.ImagMin
-	imagMax := a.ImagMax
+// getBounds returns validated real and imaginary bounds
+func (a ComplexAttributesImpl[T]) getBounds() (float64, float64, float64, float64) {
+	realMin, realMax := a.RealMin, a.RealMax
+	imagMin, imagMax := a.ImagMin, a.ImagMax
 
 	if realMax <= realMin {
-		realMin = -10.0
-		realMax = 10.0
+		realMin, realMax = -10.0, 10.0
 	}
 	if imagMax <= imagMin {
-		imagMin = -10.0
-		imagMax = 10.0
+		imagMin, imagMax = -10.0, 10.0
 	}
 
-	realPart := realMin + rand.Float64()*(realMax-realMin)
-	imagPart := imagMin + rand.Float64()*(imagMax-imagMin)
+	return realMin, realMax, imagMin, imagMax
+}
 
+// generateRandomReal generates a random real part
+func (a ComplexAttributesImpl[T]) generateRandomReal(min, max float64) float64 {
+	return min + rand.Float64()*(max-min)
+}
+
+// generateRandomImaginary generates a random imaginary part
+func (a ComplexAttributesImpl[T]) generateRandomImaginary(min, max float64) float64 {
+	return min + rand.Float64()*(max-min)
+}
+
+// createComplexValue creates and converts the complex value to target type
+func (a ComplexAttributesImpl[T]) createComplexValue(realPart, imagPart float64, zero T) any {
 	complexVal := complex(realPart, imagPart)
 	resultVal := reflect.ValueOf(complexVal).Convert(reflect.TypeOf(zero))
 	return resultVal.Interface()
@@ -245,9 +308,16 @@ func (a StringAttributes) GetDefaultImplementation() Attributes {
 }
 
 func (a StringAttributes) GetRandomValue() any {
-	minLen := a.MinLen
-	maxLen := a.MaxLen
+	minLen, maxLen := a.getLengthBounds()
+	length := a.pickLength(minLen, maxLen)
+	allowedRunes := a.getAllowedRunes()
+	generated := a.generateRandomString(allowedRunes, length)
+	return a.applyPrefixSuffix(generated)
+}
 
+// getLengthBounds returns validated min and max length bounds
+func (a StringAttributes) getLengthBounds() (int, int) {
+	minLen, maxLen := a.MinLen, a.MaxLen
 	if maxLen <= 0 {
 		maxLen = 10
 	}
@@ -257,33 +327,45 @@ func (a StringAttributes) GetRandomValue() any {
 	if minLen > maxLen {
 		minLen = maxLen
 	}
+	return minLen, maxLen
+}
 
-	length := minLen
+// pickLength picks a random length between minLen and maxLen
+func (a StringAttributes) pickLength(minLen, maxLen int) int {
 	if maxLen > minLen {
-		length = minLen + rand.Intn(maxLen-minLen+1)
+		return minLen + rand.Intn(maxLen-minLen+1)
 	}
+	return minLen
+}
 
+// getAllowedRunes returns the allowed runes, defaulting to ASCII printable if empty
+func (a StringAttributes) getAllowedRunes() []rune {
 	allowedRunes := a.AllowedRunes
 	if len(allowedRunes) == 0 {
 		for i := 32; i <= 126; i++ {
 			allowedRunes = append(allowedRunes, rune(i))
 		}
 	}
+	return allowedRunes
+}
 
+// generateRandomString generates a random string of given length using allowed runes
+func (a StringAttributes) generateRandomString(allowedRunes []rune, length int) string {
 	result := make([]rune, length)
 	for i := 0; i < length; i++ {
 		result[i] = allowedRunes[rand.Intn(len(allowedRunes))]
 	}
+	return string(result)
+}
 
-	generated := string(result)
-
+// applyPrefixSuffix applies prefix and suffix to the generated string
+func (a StringAttributes) applyPrefixSuffix(generated string) string {
 	if a.Prefix != "" {
 		generated = a.Prefix + generated
 	}
 	if a.Suffix != "" {
 		generated = generated + a.Suffix
 	}
-
 	return generated
 }
 
@@ -403,13 +485,24 @@ func (a BoolAttributes) GetDefaultImplementation() Attributes {
 }
 
 func (a BoolAttributes) GetRandomValue() any {
-	if a.ForceTrue {
-		return true
+	if a.shouldForceValue() {
+		return a.getForcedValue()
 	}
-	if a.ForceFalse {
-		return false
-	}
-	// Random boolean value
+	return a.generateRandomBool()
+}
+
+// shouldForceValue checks if a specific boolean value should be forced
+func (a BoolAttributes) shouldForceValue() bool {
+	return a.ForceTrue || a.ForceFalse
+}
+
+// getForcedValue returns the forced boolean value
+func (a BoolAttributes) getForcedValue() bool {
+	return a.ForceTrue
+}
+
+// generateRandomBool generates a random boolean value
+func (a BoolAttributes) generateRandomBool() bool {
 	return rand.Intn(2) == 1
 }
 
@@ -571,29 +664,50 @@ func (a PointerAttributes) GetDefaultImplementation() Attributes {
 }
 
 func (a PointerAttributes) GetRandomValue() any {
-	if a.AllowNil && rand.Intn(2) == 0 {
-		return reflect.Zero(a.GetReflectType()).Interface()
+	if a.shouldReturnNil() {
+		return a.getNilPointer()
 	}
 
-	var innerValue reflect.Value
-	if attrs, ok := a.Inner.(Attributes); ok {
-		randVal := attrs.GetRandomValue()
-		if randVal != nil {
-			innerValue = reflect.ValueOf(randVal)
-		} else {
-			innerType := attrs.GetReflectType()
-			if innerType != nil {
-				innerValue = reflect.Zero(innerType)
-			} else {
-				return nil
-			}
-		}
-	} else {
+	innerValue := a.getInnerValue()
+	if innerValue == nil {
 		return nil
 	}
 
+	return a.createPointerChain(innerValue)
+}
+
+// shouldReturnNil determines if nil should be returned
+func (a PointerAttributes) shouldReturnNil() bool {
+	return a.AllowNil && rand.Intn(2) == 0
+}
+
+// getNilPointer returns a nil pointer of the correct type
+func (a PointerAttributes) getNilPointer() any {
+	return reflect.Zero(a.GetReflectType()).Interface()
+}
+
+// getInnerValue gets the inner value from the Inner attribute
+func (a PointerAttributes) getInnerValue() *reflect.Value {
+	if attrs, ok := a.Inner.(Attributes); ok {
+		randVal := attrs.GetRandomValue()
+		if randVal != nil {
+			innerValue := reflect.ValueOf(randVal)
+			return &innerValue
+		} else {
+			innerType := attrs.GetReflectType()
+			if innerType != nil {
+				innerValue := reflect.Zero(innerType)
+				return &innerValue
+			}
+		}
+	}
+	return nil
+}
+
+// createPointerChain creates a chain of pointers with the specified depth
+func (a PointerAttributes) createPointerChain(innerValue *reflect.Value) any {
 	ptrValue := reflect.New(innerValue.Type())
-	ptrValue.Elem().Set(innerValue)
+	ptrValue.Elem().Set(*innerValue)
 
 	currentPtr := ptrValue
 	for i := 1; i < a.Depth; i++ {
@@ -652,31 +766,51 @@ func (a StructAttributes) GetRandomValue() any {
 	if err != nil {
 		return nil
 	}
-	structValue := reflect.New(structType).Elem()
+	structValue := a.createStructValue(structType)
+	a.populateStructFields(structValue)
+	return structValue.Interface()
+}
+
+// createStructValue creates a new struct value of the given type
+func (a StructAttributes) createStructValue(structType reflect.Type) reflect.Value {
+	return reflect.New(structType).Elem()
+}
+
+// populateStructFields populates all struct fields with random values
+func (a StructAttributes) populateStructFields(structValue reflect.Value) {
 	for fieldName, fieldAttr := range a.FieldAttrs {
 		field := structValue.FieldByName(fieldName)
-		if !field.IsValid() || !field.CanSet() {
+		if !a.isFieldSettable(field) {
 			continue
 		}
-		var fieldValue reflect.Value
-		if attrs, ok := fieldAttr.(Attributes); ok {
-			randVal := attrs.GetRandomValue()
-			if randVal != nil {
-				fieldValue = reflect.ValueOf(randVal)
-			} else {
-				fieldValue = reflect.Zero(field.Type())
-			}
-		} else {
-			fieldValue = reflect.Zero(field.Type())
-		}
-		if fieldValue.Type().AssignableTo(field.Type()) {
-			field.Set(fieldValue)
-		} else if fieldValue.Type().ConvertibleTo(field.Type()) {
-			field.Set(fieldValue.Convert(field.Type()))
+		fieldValue := a.generateFieldValue(fieldAttr, field.Type())
+		a.setFieldValue(field, fieldValue)
+	}
+}
+
+// isFieldSettable checks if the field is valid and can be set
+func (a StructAttributes) isFieldSettable(field reflect.Value) bool {
+	return field.IsValid() && field.CanSet()
+}
+
+// generateFieldValue generates a random value for a struct field
+func (a StructAttributes) generateFieldValue(fieldAttr any, fieldType reflect.Type) reflect.Value {
+	if attrs, ok := fieldAttr.(Attributes); ok {
+		randVal := attrs.GetRandomValue()
+		if randVal != nil {
+			return reflect.ValueOf(randVal)
 		}
 	}
+	return reflect.Zero(fieldType)
+}
 
-	return structValue.Interface()
+// setFieldValue sets the field value with proper type conversion if needed
+func (a StructAttributes) setFieldValue(field, fieldValue reflect.Value) {
+	if fieldValue.Type().AssignableTo(field.Type()) {
+		field.Set(fieldValue)
+	} else if fieldValue.Type().ConvertibleTo(field.Type()) {
+		field.Set(fieldValue.Convert(field.Type()))
+	}
 }
 
 func (a StructAttributes) getStructReflectType() (reflect.Type, error) {
@@ -722,38 +856,54 @@ func (a ArrayAttributes) GetDefaultImplementation() Attributes {
 }
 
 func (a ArrayAttributes) GetRandomValue() any {
-	if a.Length <= 0 {
+	if !a.isValidLength() {
 		return nil
 	}
 
-	// Get element type
-	var elemType reflect.Type
-	if attrs, ok := a.ElementAttrs.(Attributes); ok {
-		elemType = attrs.GetReflectType()
-	}
-
+	elemType := a.getElementType()
 	if elemType == nil {
 		return nil
 	}
 
-	arrayType := reflect.ArrayOf(a.Length, elemType)
-	arrayValue := reflect.New(arrayType).Elem()
+	arrayValue := a.createArrayValue(elemType)
+	a.populateArrayElements(arrayValue, elemType)
+	return arrayValue.Interface()
+}
 
-	// Generate random elements
+// isValidLength checks if the array length is valid
+func (a ArrayAttributes) isValidLength() bool {
+	return a.Length > 0
+}
+
+// getElementType returns the element type for the array
+func (a ArrayAttributes) getElementType() reflect.Type {
+	if attrs, ok := a.ElementAttrs.(Attributes); ok {
+		return attrs.GetReflectType()
+	}
+	return nil
+}
+
+// createArrayValue creates a new array value of the specified type and length
+func (a ArrayAttributes) createArrayValue(elemType reflect.Type) reflect.Value {
+	arrayType := reflect.ArrayOf(a.Length, elemType)
+	return reflect.New(arrayType).Elem()
+}
+
+// populateArrayElements fills the array with random elements
+func (a ArrayAttributes) populateArrayElements(arrayValue reflect.Value, elemType reflect.Type) {
 	for i := 0; i < a.Length; i++ {
-		var elemValue reflect.Value
-		if attrs, ok := a.ElementAttrs.(Attributes); ok {
-			randVal := attrs.GetRandomValue()
-			if randVal != nil {
-				elemValue = reflect.ValueOf(randVal)
-			} else {
-				elemValue = reflect.Zero(elemType)
-			}
-		} else {
-			elemValue = reflect.Zero(elemType)
-		}
+		elemValue := a.generateElementValue(elemType)
 		arrayValue.Index(i).Set(elemValue)
 	}
+}
 
-	return arrayValue.Interface()
+// generateElementValue generates a random value for an array element
+func (a ArrayAttributes) generateElementValue(elemType reflect.Type) reflect.Value {
+	if attrs, ok := a.ElementAttrs.(Attributes); ok {
+		randVal := attrs.GetRandomValue()
+		if randVal != nil {
+			return reflect.ValueOf(randVal)
+		}
+	}
+	return reflect.Zero(elemType)
 }
