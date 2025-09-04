@@ -10,18 +10,18 @@ import (
 	"github.com/laiambryant/gotestutils/utils"
 )
 
-type MTesting struct {
+type MTesting[T any] struct {
 	f          any
 	iterations uint
-	attributes a.MTAttributes
+	attributes a.MTAttributes[T]
 	t          *testing.T
 }
 
-func (mt *MTesting) WithIterations(n uint) *MTesting           { mt.iterations = n; return mt }
-func (mt *MTesting) WithFunction(f any) *MTesting              { mt.f = f; return mt }
-func (mt *MTesting) WithAttributes(a a.MTAttributes) *MTesting { mt.attributes = a; return mt }
-func (mt *MTesting) WithT(t *testing.T) *MTesting              { mt.t = t; return mt }
-func (mt *MTesting) GenerateInputs() ([]any, error) {
+func (mt *MTesting[T]) WithIterations(n uint) *MTesting[T]              { mt.iterations = n; return mt }
+func (mt *MTesting[T]) WithFunction(f any) *MTesting[T]                 { mt.f = f; return mt }
+func (mt *MTesting[T]) WithAttributes(a a.MTAttributes[T]) *MTesting[T] { mt.attributes = a; return mt }
+func (mt *MTesting[T]) WithT(t *testing.T) *MTesting[T]                 { mt.t = t; return mt }
+func (mt *MTesting[T]) GenerateInputs() ([]any, error) {
 	if mt.f == nil {
 		return nil, nil
 	}
@@ -41,6 +41,6 @@ func (mt *MTesting) GenerateInputs() ([]any, error) {
 	return args, nil
 }
 
-func (mt *MTesting) ApplyFunction() (bool, error) {
+func (mt *MTesting[T]) ApplyFunction() (bool, error) {
 	return true, nil
 }

@@ -1,7 +1,6 @@
 package generation
 
 import (
-	"fmt"
 	"reflect"
 
 	a "github.com/laiambryant/gotestutils/mtesting/attributes"
@@ -9,11 +8,11 @@ import (
 
 func GenerateValueForTypeWithAttr(attr a.Attributes, t reflect.Type) (any, error) {
 	switch attr := attr.(type) {
-	case a.IntegerAttributes:
+	case a.IntegerAttributes[int]:
 		return generateIntegerValue(attr)
-	case a.FloatAttributes:
+	case a.FloatAttributes[float32]:
 		return generateFloatValue(attr)
-	case a.ComplexAttributes:
+	case a.ComplexAttributes[complex64]:
 		return generateComplexValue(attr)
 	case a.StringAttributes:
 		return generateStringValue(attr)
@@ -35,15 +34,14 @@ func GenerateValueForTypeWithAttr(attr a.Attributes, t reflect.Type) (any, error
 	return nil, UnknownTypeError{reflect.TypeOf(attr)}
 }
 
-func generateIntegerValue(ia a.IntegerAttributes) (any, error) {
+func generateIntegerValue[T a.Integers](ia a.IntegerAttributes[T]) (any, error) {
+	return nil, nil
+}
+func generateFloatValue[T a.Floats](fa a.FloatAttributes[T]) (any, error) {
 	return nil, nil
 }
 
-func generateFloatValue(fa a.FloatAttributes) (any, error) {
-	return nil, nil
-}
-
-func generateComplexValue(ca a.ComplexAttributes) (any, error) {
+func generateComplexValue[T a.Complex](ca a.ComplexAttributes[T]) (any, error) {
 	return nil, nil
 }
 
@@ -94,42 +92,3 @@ func generateArrayValueWithDepth(a a.ArrayAttributes, depth int) (any, error) {
 func generateChanValue(ca a.ChanAttributes) (any, error) {
 	return nil, nil
 }
-
-func genSignedInteger(a a.IntegerAttributes) (any, error) { return nil, nil }
-
-func genUnsignedInteger(a a.IntegerAttributes) (any, error) { return nil, nil }
-
-func enforceSignedZero(val, min, max int64, a a.IntegerAttributes) (any, error) { return nil, nil }
-
-func applyParity(val int64, a a.IntegerAttributes) (any, error) { return nil, nil }
-
-func applyMultipleSigned(val, min, max int64, a a.IntegerAttributes) (any, error) { return nil, nil }
-
-func chooseInSetSigned(current int64, a a.IntegerAttributes) (any, error) { return nil, nil }
-
-func applyExcludeSigned(val int64, a a.IntegerAttributes) (any, error) { return nil, nil }
-
-func isIntKind(k reflect.Kind) (any, error) { return nil, nil }
-
-func isUintKind(k reflect.Kind) (any, error) { return nil, nil }
-
-func randIntWithin(min, max int64) (any, error) { return nil, nil }
-
-func randUintWithin(min, max uint64) (any, error) { return nil, nil }
-
-func alignIntMultiple(val, k, min, max int64) (any, error) { return nil, nil }
-
-func alignUintMultiple(val, k, min, max uint64) (any, error) { return nil, nil }
-
-func inIntExcludeSet(val int64, set []int64) (any, error) { return nil, nil }
-
-func inUintExcludeSet(val uint64, set []int64) (any, error) { return nil, nil }
-
-func float64Pow10(n int) (any, error) { return nil, nil }
-
-type GenerationError struct {
-	Op  string
-	Msg string
-}
-
-func (e GenerationError) Error() string { return fmt.Sprintf("generation %s: %s", e.Op, e.Msg) }

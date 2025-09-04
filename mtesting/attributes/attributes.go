@@ -6,10 +6,10 @@ import (
 	p "github.com/laiambryant/gotestutils/pbtesting/properties/predicates"
 )
 
-type MTAttributes struct {
-	IA  IntegerAttributes
-	FA  FloatAttributes
-	CA  ComplexAttributes
+type MTAttributes[T any] struct {
+	IA  IntegerAttributes[int]
+	FA  FloatAttributes[float32]
+	CA  ComplexAttributes[complex64]
 	SA  StringAttributes
 	SLA SliceAttributes
 	BA  BoolAttributes
@@ -22,7 +22,7 @@ type MTAttributes struct {
 	ARA ArrayAttributes
 }
 
-func (mt MTAttributes) GetAttributeGivenType(t reflect.Type) (retA Attributes) {
+func (mt MTAttributes[T]) GetAttributeGivenType(t reflect.Type) (retA Attributes) {
 	kindMap := map[reflect.Kind]Attributes{
 		reflect.Int: mt.IA, reflect.Int8: mt.IA, reflect.Int16: mt.IA, reflect.Int32: mt.IA, reflect.Int64: mt.IA,
 		reflect.Uint: mt.IA, reflect.Uint8: mt.IA, reflect.Uint16: mt.IA, reflect.Uint32: mt.IA, reflect.Uint64: mt.IA,
@@ -58,37 +58,13 @@ type Attributes interface {
 	GetDefaultImplementation() Attributes
 }
 
-type IntegerAttributes struct {
-	Signed        bool
-	AllowNegative bool
-	AllowZero     bool
-	Max           uint64
-	Min           int64
-	InSet         []int64
-	NotInSet      []int64
+type Floats interface {
+	float32 | float64
 }
 
-func (a IntegerAttributes) GetAttributes() any { return a }
-func (a IntegerAttributes) GetReflectType() reflect.Type {
-	if a.Signed || a.AllowNegative {
-		return reflect.TypeOf(int64(0))
-	}
-	return reflect.TypeOf(uint64(0))
-}
-
-func (a IntegerAttributes) GetDefaultImplementation() Attributes {
-	return IntegerAttributes{
-		Signed:        true,
-		AllowNegative: true,
-		AllowZero:     true,
-		Max:           100,
-		Min:           -100,
-	}
-}
-
-type FloatAttributes struct {
-	Min        float64
-	Max        float64
+type FloatAttributes[T Floats] struct {
+	Min        T
+	Max        T
 	NonZero    bool
 	FiniteOnly bool
 	AllowNaN   bool
@@ -96,10 +72,10 @@ type FloatAttributes struct {
 	Precision  uint
 }
 
-func (a FloatAttributes) GetAttributes() any           { return a }
-func (a FloatAttributes) GetReflectType() reflect.Type { return reflect.TypeOf(float64(0)) }
-func (a FloatAttributes) GetDefaultImplementation() Attributes {
-	return FloatAttributes{
+func (a FloatAttributes[T]) GetAttributes() any           { return a }
+func (a FloatAttributes[T]) GetReflectType() reflect.Type { return reflect.TypeOf(float64(0)) }
+func (a FloatAttributes[T]) GetDefaultImplementation() Attributes {
+	return FloatAttributes[T]{
 		Min:        -100.0,
 		Max:        100.0,
 		NonZero:    true,
@@ -107,7 +83,11 @@ func (a FloatAttributes) GetDefaultImplementation() Attributes {
 	}
 }
 
-type ComplexAttributes struct {
+type Complex interface {
+	complex64 | complex128
+}
+
+type ComplexAttributes[T Complex] struct {
 	RealMin      float64
 	RealMax      float64
 	ImagMin      float64
@@ -118,10 +98,10 @@ type ComplexAttributes struct {
 	AllowInf     bool
 }
 
-func (a ComplexAttributes) GetAttributes() any           { return a }
-func (a ComplexAttributes) GetReflectType() reflect.Type { return reflect.TypeOf(complex128(0)) }
-func (a ComplexAttributes) GetDefaultImplementation() Attributes {
-	return ComplexAttributes{
+func (a ComplexAttributes[T]) GetAttributes() any           { return a }
+func (a ComplexAttributes[T]) GetReflectType() reflect.Type { return reflect.TypeOf(complex128(0)) }
+func (a ComplexAttributes[T]) GetDefaultImplementation() Attributes {
+	return ComplexAttributes[T]{
 		RealMin: -10.0,
 		RealMax: 10.0,
 		ImagMin: -10.0,
@@ -177,11 +157,9 @@ func (a SliceAttributes) GetReflectType() reflect.Type {
 
 func (a SliceAttributes) GetDefaultImplementation() Attributes {
 	return SliceAttributes{
-		MinLen: 1,
-		MaxLen: 5,
-		ElementAttrs: IntegerAttributes{
-			Signed: true,
-		},
+		MinLen:       1,
+		MaxLen:       5,
+		ElementAttrs: IntegerAttributes[int]{},
 	}
 }
 
@@ -236,9 +214,7 @@ func (a MapAttributes) GetDefaultImplementation() Attributes {
 			MinLen: 1,
 			MaxLen: 5,
 		},
-		ValueAttrs: IntegerAttributes{
-			Signed: true,
-		},
+		ValueAttrs: IntegerAttributes[int]{},
 	}
 }
 
@@ -267,10 +243,7 @@ func (a ChanAttributes) GetDefaultImplementation() Attributes {
 	return ChanAttributes{
 		MinBuffer: 0,
 		MaxBuffer: 10,
-		ElemAttrs: FloatAttributes{
-			Min: -10.0,
-			Max: 10.0,
-		},
+		ElemAttrs: FloatAttributes[float32]{},
 	}
 }
 
@@ -339,9 +312,7 @@ func (a PointerAttributes) GetDefaultImplementation() Attributes {
 	return PointerAttributes{
 		AllowNil: true,
 		Depth:    1,
-		Inner: IntegerAttributes{
-			Signed: true,
-		},
+		Inner:    IntegerAttributes[int]{},
 	}
 }
 
@@ -378,10 +349,8 @@ func (a StructAttributes) GetReflectType() reflect.Type {
 func (a StructAttributes) GetDefaultImplementation() Attributes {
 	return StructAttributes{
 		FieldAttrs: map[string]any{
-			"Field1": IntegerAttributes{
-				Signed: true,
-			},
-			"Field2": FloatAttributes{
+			"Field1": IntegerAttributes[int]{},
+			"Field2": FloatAttributes[float32]{
 				Min: -10.0,
 				Max: 10.0,
 			},
@@ -415,9 +384,7 @@ func (a ArrayAttributes) GetReflectType() reflect.Type {
 
 func (a ArrayAttributes) GetDefaultImplementation() Attributes {
 	return ArrayAttributes{
-		Length: 5,
-		ElementAttrs: IntegerAttributes{
-			Signed: true,
-		},
+		Length:       5,
+		ElementAttrs: IntegerAttributes[int]{},
 	}
 }

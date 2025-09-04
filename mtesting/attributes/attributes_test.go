@@ -15,19 +15,20 @@ func TestGetAttributesMethods(t *testing.T) {
 		want any
 	}
 	cases := []testCase{
-		{"IntegerAttributes", IntegerAttributes{Signed: true, AllowNegative: true, AllowZero: true, Max: 10, Min: -5, InSet: []int64{1, 2}, NotInSet: []int64{3}}, IntegerAttributes{Signed: true, AllowNegative: true, AllowZero: true, Max: 10, Min: -5, InSet: []int64{1, 2}, NotInSet: []int64{3}}},
-		{"FloatAttributes", FloatAttributes{Min: 1.1, Max: 2.2, NonZero: true, FiniteOnly: true, AllowNaN: true, AllowInf: true, Precision: 3}, FloatAttributes{Min: 1.1, Max: 2.2, NonZero: true, FiniteOnly: true, AllowNaN: true, AllowInf: true, Precision: 3}},
-		{"ComplexAttributes", ComplexAttributes{RealMin: -1, RealMax: 1, ImagMin: -2, ImagMax: 2, MagnitudeMin: 0.5, MagnitudeMax: 10, AllowNaN: true, AllowInf: true}, ComplexAttributes{RealMin: -1, RealMax: 1, ImagMin: -2, ImagMax: 2, MagnitudeMin: 0.5, MagnitudeMax: 10, AllowNaN: true, AllowInf: true}},
+		{"IntegerAttributes", IntegerAttributes[int64]{AllowNegative: true, AllowZero: true, Max: 10, Min: -5, InSet: []int64{1, 2}, NotInSet: []int64{3}}, IntegerAttributes[int64]{AllowNegative: true, AllowZero: true, Max: 10, Min: -5, InSet: []int64{1, 2}, NotInSet: []int64{3}}},
+		{"UnsignedIntegerAttributes", UnsignedIntegerAttributes[uint64]{AllowNegative: false, AllowZero: true, Max: 100, Min: 0, InSet: []uint64{10, 20}, NotInSet: []uint64{30}}, UnsignedIntegerAttributes[uint64]{AllowNegative: false, AllowZero: true, Max: 100, Min: 0, InSet: []uint64{10, 20}, NotInSet: []uint64{30}}},
+		{"FloatAttributes", FloatAttributes[float64]{Min: 1.1, Max: 2.2, NonZero: true, FiniteOnly: true, AllowNaN: true, AllowInf: true, Precision: 3}, FloatAttributes[float64]{Min: 1.1, Max: 2.2, NonZero: true, FiniteOnly: true, AllowNaN: true, AllowInf: true, Precision: 3}},
+		{"ComplexAttributes", ComplexAttributes[complex128]{RealMin: -1, RealMax: 1, ImagMin: -2, ImagMax: 2, MagnitudeMin: 0.5, MagnitudeMax: 10, AllowNaN: true, AllowInf: true}, ComplexAttributes[complex128]{RealMin: -1, RealMax: 1, ImagMin: -2, ImagMax: 2, MagnitudeMin: 0.5, MagnitudeMax: 10, AllowNaN: true, AllowInf: true}},
 		{"StringAttributes", StringAttributes{MinLen: 1, MaxLen: 5, Prefix: "pre", Suffix: "suf", Contains: "mid", UniqueChars: true}, StringAttributes{MinLen: 1, MaxLen: 5, Prefix: "pre", Suffix: "suf", Contains: "mid", UniqueChars: true}},
-		{"SliceAttributes", SliceAttributes{MinLen: 1, MaxLen: 3, Unique: true, Sorted: true, ElementPreds: []p.Predicate{}, ElementAttrs: IntegerAttributes{}}, SliceAttributes{MinLen: 1, MaxLen: 3, Unique: true, Sorted: true, ElementPreds: []p.Predicate{}, ElementAttrs: IntegerAttributes{}}},
+		{"SliceAttributes", SliceAttributes{MinLen: 1, MaxLen: 3, Unique: true, Sorted: true, ElementPreds: []p.Predicate{}, ElementAttrs: IntegerAttributes[int64]{}}, SliceAttributes{MinLen: 1, MaxLen: 3, Unique: true, Sorted: true, ElementPreds: []p.Predicate{}, ElementAttrs: IntegerAttributes[int64]{}}},
 		{"BoolAttributes", BoolAttributes{ForceTrue: true}, BoolAttributes{ForceTrue: true}},
-		{"MapAttributes", MapAttributes{MinSize: 1, MaxSize: 3, KeyPreds: []p.Predicate{}, ValuePreds: []p.Predicate{}, KeyAttrs: StringAttributes{}, ValueAttrs: IntegerAttributes{}}, MapAttributes{MinSize: 1, MaxSize: 3, KeyPreds: []p.Predicate{}, ValuePreds: []p.Predicate{}, KeyAttrs: StringAttributes{}, ValueAttrs: IntegerAttributes{}}},
-		{"ChanAttributes", ChanAttributes{MinBuffer: 0, MaxBuffer: 2, ElemAttrs: FloatAttributes{}}, ChanAttributes{MinBuffer: 0, MaxBuffer: 2, ElemAttrs: FloatAttributes{}}},
+		{"MapAttributes", MapAttributes{MinSize: 1, MaxSize: 3, KeyPreds: []p.Predicate{}, ValuePreds: []p.Predicate{}, KeyAttrs: StringAttributes{}, ValueAttrs: IntegerAttributes[int64]{}}, MapAttributes{MinSize: 1, MaxSize: 3, KeyPreds: []p.Predicate{}, ValuePreds: []p.Predicate{}, KeyAttrs: StringAttributes{}, ValueAttrs: IntegerAttributes[int64]{}}},
+		{"ChanAttributes", ChanAttributes{MinBuffer: 0, MaxBuffer: 2, ElemAttrs: FloatAttributes[float64]{}}, ChanAttributes{MinBuffer: 0, MaxBuffer: 2, ElemAttrs: FloatAttributes[float64]{}}},
 		{"FuncAttributes", FuncAttributes{Deterministic: true, PanicProbability: 0.1, ReturnZeroValues: true}, FuncAttributes{Deterministic: true, PanicProbability: 0.1, ReturnZeroValues: true}},
 		{"InterfaceAttributes", InterfaceAttributes{AllowedConcrete: []reflect.Type{reflect.TypeOf(1), reflect.TypeOf("")}}, InterfaceAttributes{AllowedConcrete: []reflect.Type{reflect.TypeOf(1), reflect.TypeOf("")}}},
-		{"PointerAttributes", PointerAttributes{AllowNil: true, Depth: 2, Inner: IntegerAttributes{}}, PointerAttributes{AllowNil: true, Depth: 2, Inner: IntegerAttributes{}}},
-		{"StructAttributes", StructAttributes{FieldAttrs: map[string]any{"A": IntegerAttributes{}, "B": FloatAttributes{}}}, StructAttributes{FieldAttrs: map[string]any{"A": IntegerAttributes{}, "B": FloatAttributes{}}}},
-		{"ArrayAttributes", ArrayAttributes{Length: 3, Sorted: true, ElementAttrs: IntegerAttributes{}}, ArrayAttributes{Length: 3, Sorted: true, ElementAttrs: IntegerAttributes{}}},
+		{"PointerAttributes", PointerAttributes{AllowNil: true, Depth: 2, Inner: IntegerAttributes[int64]{}}, PointerAttributes{AllowNil: true, Depth: 2, Inner: IntegerAttributes[int64]{}}},
+		{"StructAttributes", StructAttributes{FieldAttrs: map[string]any{"A": IntegerAttributes[int64]{}, "B": FloatAttributes[float64]{}}}, StructAttributes{FieldAttrs: map[string]any{"A": IntegerAttributes[int64]{}, "B": FloatAttributes[float64]{}}}},
+		{"ArrayAttributes", ArrayAttributes{Length: 3, Sorted: true, ElementAttrs: IntegerAttributes[int64]{}}, ArrayAttributes{Length: 3, Sorted: true, ElementAttrs: IntegerAttributes[int64]{}}},
 	}
 	var suite []ctesting.CharacterizationTest[bool]
 	for _, tc := range cases {
