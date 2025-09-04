@@ -39,12 +39,12 @@ func (mt MTAttributes) GetAttributeGivenType(t reflect.Type) (retA Attributes) {
 			retA = retA.GetDefaultImplementation()
 			return
 		}
-		at := reflect.TypeOf(attrsVal)
-		if at == nil {
+		attrsValType := reflect.TypeOf(attrsVal)
+		if attrsValType == nil {
 			retA = retA.GetDefaultImplementation()
 			return
 		}
-		zero := reflect.Zero(at).Interface()
+		zero := reflect.Zero(attrsValType).Interface()
 		if reflect.DeepEqual(attrsVal, zero) {
 			retA = retA.GetDefaultImplementation()
 		}
@@ -64,9 +64,6 @@ type IntegerAttributes struct {
 	AllowZero     bool
 	Max           uint64
 	Min           int64
-	EvenOnly      bool
-	OddOnly       bool
-	MultipleOf    uint64
 	InSet         []int64
 	NotInSet      []int64
 }
@@ -78,6 +75,7 @@ func (a IntegerAttributes) GetReflectType() reflect.Type {
 	}
 	return reflect.TypeOf(uint64(0))
 }
+
 func (a IntegerAttributes) GetDefaultImplementation() Attributes {
 	return IntegerAttributes{
 		Signed:        true,
@@ -176,6 +174,7 @@ func (a SliceAttributes) GetReflectType() reflect.Type {
 	}
 	return reflect.SliceOf(elemType)
 }
+
 func (a SliceAttributes) GetDefaultImplementation() Attributes {
 	return SliceAttributes{
 		MinLen: 1,
@@ -228,6 +227,7 @@ func (a MapAttributes) GetReflectType() reflect.Type {
 	}
 	return reflect.MapOf(kt, vt)
 }
+
 func (a MapAttributes) GetDefaultImplementation() Attributes {
 	return MapAttributes{
 		MinSize: 1,
@@ -262,6 +262,7 @@ func (a ChanAttributes) GetReflectType() reflect.Type {
 	}
 	return reflect.ChanOf(reflect.BothDir, et)
 }
+
 func (a ChanAttributes) GetDefaultImplementation() Attributes {
 	return ChanAttributes{
 		MinBuffer: 0,
@@ -295,6 +296,7 @@ func (a InterfaceAttributes) GetAttributes() any { return a }
 func (a InterfaceAttributes) GetReflectType() reflect.Type {
 	return reflect.TypeOf((*any)(nil)).Elem()
 }
+
 func (a InterfaceAttributes) GetDefaultImplementation() Attributes {
 	return InterfaceAttributes{
 		AllowedConcrete: []reflect.Type{
@@ -332,6 +334,7 @@ func (a PointerAttributes) GetReflectType() reflect.Type {
 	}
 	return t
 }
+
 func (a PointerAttributes) GetDefaultImplementation() Attributes {
 	return PointerAttributes{
 		AllowNil: true,
@@ -371,6 +374,7 @@ func (a StructAttributes) GetReflectType() reflect.Type {
 	}
 	return reflect.StructOf(fields)
 }
+
 func (a StructAttributes) GetDefaultImplementation() Attributes {
 	return StructAttributes{
 		FieldAttrs: map[string]any{
@@ -408,6 +412,7 @@ func (a ArrayAttributes) GetReflectType() reflect.Type {
 	}
 	return reflect.ArrayOf(a.Length, et)
 }
+
 func (a ArrayAttributes) GetDefaultImplementation() Attributes {
 	return ArrayAttributes{
 		Length: 5,

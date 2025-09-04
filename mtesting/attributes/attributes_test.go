@@ -15,7 +15,7 @@ func TestGetAttributesMethods(t *testing.T) {
 		want any
 	}
 	cases := []testCase{
-		{"IntegerAttributes", IntegerAttributes{Signed: true, AllowNegative: true, AllowZero: true, Max: 10, Min: -5, EvenOnly: true, MultipleOf: 2, InSet: []int64{1, 2}, NotInSet: []int64{3}}, IntegerAttributes{Signed: true, AllowNegative: true, AllowZero: true, Max: 10, Min: -5, EvenOnly: true, MultipleOf: 2, InSet: []int64{1, 2}, NotInSet: []int64{3}}},
+		{"IntegerAttributes", IntegerAttributes{Signed: true, AllowNegative: true, AllowZero: true, Max: 10, Min: -5, InSet: []int64{1, 2}, NotInSet: []int64{3}}, IntegerAttributes{Signed: true, AllowNegative: true, AllowZero: true, Max: 10, Min: -5, InSet: []int64{1, 2}, NotInSet: []int64{3}}},
 		{"FloatAttributes", FloatAttributes{Min: 1.1, Max: 2.2, NonZero: true, FiniteOnly: true, AllowNaN: true, AllowInf: true, Precision: 3}, FloatAttributes{Min: 1.1, Max: 2.2, NonZero: true, FiniteOnly: true, AllowNaN: true, AllowInf: true, Precision: 3}},
 		{"ComplexAttributes", ComplexAttributes{RealMin: -1, RealMax: 1, ImagMin: -2, ImagMax: 2, MagnitudeMin: 0.5, MagnitudeMax: 10, AllowNaN: true, AllowInf: true}, ComplexAttributes{RealMin: -1, RealMax: 1, ImagMin: -2, ImagMax: 2, MagnitudeMin: 0.5, MagnitudeMax: 10, AllowNaN: true, AllowInf: true}},
 		{"StringAttributes", StringAttributes{MinLen: 1, MaxLen: 5, Prefix: "pre", Suffix: "suf", Contains: "mid", UniqueChars: true}, StringAttributes{MinLen: 1, MaxLen: 5, Prefix: "pre", Suffix: "suf", Contains: "mid", UniqueChars: true}},

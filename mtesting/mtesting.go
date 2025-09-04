@@ -31,7 +31,7 @@ func (mt *MTesting) GenerateInputs() ([]any, error) {
 	inTypes, _ := utils.ExtractFArgTypes(mt.f)
 	args := make([]any, len(inTypes))
 	for i, t := range inTypes {
-		v, err := gen.GenerateValueForTypeWithAttr(mt.attributes.GetAttributeGivenType(t))
+		v, err := gen.GenerateValueForTypeWithAttr(mt.attributes.GetAttributeGivenType(t), t)
 		if err != nil && mt.t != nil {
 			mt.t.Logf("GenerateValueForTypeWithAttr failed for arg %d (%v): %v", i, t, err)
 		} else {
@@ -39,4 +39,8 @@ func (mt *MTesting) GenerateInputs() ([]any, error) {
 		}
 	}
 	return args, nil
+}
+
+func (mt *MTesting) ApplyFunction() (bool, error) {
+	return true, nil
 }
