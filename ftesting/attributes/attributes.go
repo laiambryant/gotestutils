@@ -8,7 +8,7 @@ import (
 	p "github.com/laiambryant/gotestutils/pbtesting/properties/predicates"
 )
 
-type MTAttributes struct {
+type FTAttributes struct {
 	IntegerAttr  IntegerAttributes
 	UIntegerAttr UnsignedIntegerAttributes
 	FloatAttr    FloatAttributes
@@ -22,7 +22,7 @@ type MTAttributes struct {
 	ArrayAttr    ArrayAttributes
 }
 
-func (mt MTAttributes) GetAttributeGivenType(t reflect.Type) (retA Attributes) {
+func (mt FTAttributes) GetAttributeGivenType(t reflect.Type) (retA Attributes) {
 	kindMap := map[reflect.Kind]Attributes{
 		reflect.Int: mt.IntegerAttr, reflect.Int8: mt.IntegerAttr, reflect.Int16: mt.IntegerAttr, reflect.Int32: mt.IntegerAttr, reflect.Int64: mt.IntegerAttr,
 		reflect.Uint: mt.UIntegerAttr, reflect.Uint8: mt.UIntegerAttr, reflect.Uint16: mt.UIntegerAttr, reflect.Uint32: mt.UIntegerAttr, reflect.Uint64: mt.UIntegerAttr,
@@ -352,7 +352,7 @@ func (a StringAttributes) getAllowedRunes() []rune {
 // generateRandomString generates a random string of given length using allowed runes
 func (a StringAttributes) generateRandomString(allowedRunes []rune, length int) string {
 	result := make([]rune, length)
-	for i := 0; i < length; i++ {
+	for i := range length {
 		result[i] = allowedRunes[rand.Intn(len(allowedRunes))]
 	}
 	return string(result)

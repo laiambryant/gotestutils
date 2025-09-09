@@ -3,7 +3,7 @@ package pbtesting
 import (
 	"testing"
 
-	"github.com/laiambryant/gotestutils/mtesting"
+	"github.com/laiambryant/gotestutils/ftesting"
 	p "github.com/laiambryant/gotestutils/pbtesting/properties/predicates"
 	"github.com/laiambryant/gotestutils/utils"
 )
@@ -32,7 +32,7 @@ func (pbt *PBTest) WithArgAttributes(attrs ...any) *PBTest { pbt.argAttrs = attr
 
 func (pbt *PBTest) Run() (retOut []PBTestOut) {
 	for i := uint(0); i < pbt.iterations; i++ {
-		monkeyTest := (&mtesting.MTesting{}).WithFunction(pbt.f)
+		monkeyTest := (&ftesting.FTesting{}).WithFunction(pbt.f)
 		inputs, _ := monkeyTest.GenerateInputs()
 		outs, _ := pbt.applyFunction(inputs...)
 		if pbt.haspredicates() {
