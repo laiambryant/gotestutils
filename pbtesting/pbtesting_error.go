@@ -25,3 +25,11 @@ type FunctionNotProvidedError struct{}
 func (fnp FunctionNotProvidedError) Error() string {
 	return "a function must be provided for the property-based test suite to work"
 }
+
+type InvalidFunctionProvidedError struct {
+	f any
+}
+
+func (ifp InvalidFunctionProvidedError) Error() string {
+	return fmt.Sprintf("Invalid function provided to pbt, function: [%v]", ifp.f)
+}

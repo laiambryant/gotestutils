@@ -24,12 +24,16 @@ func (mt *FTesting) WithAttributes(a a.AttributesStruct) *FTesting {
 	mt.attributes = a
 	return mt
 }
+
 func (mt *FTesting) GenerateInputs() ([]any, error) {
 	if mt.f == nil {
 		return nil, nil
 	}
 	if reflect.TypeOf(mt.f).Kind() != reflect.Func {
 		return nil, fmt.Errorf("f is not a function: %v", mt.f)
+	}
+	if mt.attributes == nil {
+		mt.attributes = a.FTAttributes{}
 	}
 	fType := reflect.TypeOf(mt.f)
 	args := make([]any, fType.NumIn())

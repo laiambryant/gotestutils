@@ -10,7 +10,7 @@ import (
 
 type PBTest struct {
 	t          *testing.T
-	f          func(...any) []any
+	f          any
 	predicates []p.Predicate
 	iterations uint
 	argAttrs   []any
@@ -22,7 +22,11 @@ type PBTestOut struct {
 	ok         bool
 }
 
-func NewPBTest(f func(...any) []any) *PBTest { return &PBTest{f: f, iterations: 1} }
+type returnTypes interface {
+	any | []any
+}
+
+func NewPBTest(f any) *PBTest { return &PBTest{f: f, iterations: 1} }
 
 func (pbt *PBTest) WithIterations(n uint) *PBTest { pbt.iterations = n; return pbt }
 
@@ -30,14 +34,23 @@ func (pbt *PBTest) WithPredicates(preds ...p.Predicate) *PBTest { pbt.predicates
 
 func (pbt *PBTest) WithArgAttributes(attrs ...any) *PBTest { pbt.argAttrs = attrs; return pbt }
 
+func (pbt *PBTest) WithT(t *testing.T) *PBTest { pbt.t = t; return pbt }
+
+func (pbt *PBTest) WithF(f any) *PBTest { pbt.f = f; return pbt }
+
 func (pbt *PBTest) Run() (retOut []PBTestOut) {
 	for i := uint(0); i < pbt.iterations; i++ {
-		monkeyTest := (&ftesting.FTesting{}).WithFunction(pbt.f)
-		inputs, _ := monkeyTest.GenerateInputs()
+		fuzzTest := (&ftesting.FTesting{}).WithFunction(pbt.f)
+		inputs, _ := fuzzTest.GenerateInputs()
 		outs, _ := pbt.applyFunction(inputs...)
 		if pbt.haspredicates() {
-			for _, out := range outs {
-				retOut = pbt.validatePredicates(retOut, out)
+			switch ret := outs.(type) {
+			case []any:
+				for _, out := range ret {
+					retOut = pbt.validatePredicates(retOut, out)
+				}
+			case any:
+				retOut = pbt.validatePredicates(retOut, ret)
 			}
 		}
 	}
@@ -61,11 +74,17 @@ func (pbt PBTest) validatePredicates(retOut []PBTestOut, out any) []PBTestOut {
 	return retOut
 }
 
-func (pbt *PBTest) applyFunction(args ...any) ([]any, error) {
+func (pbt *PBTest) applyFunction(args ...any) (returnTypes, error) {
 	if pbt.f == nil {
 		return nil, nil
 	}
-	return pbt.f(args...), nil
+	switch fn := pbt.f.(type) {
+	case func(any) any:
+		return fn(args), nil
+	case func(...any) any:
+		return fn(args...), nil
+	}
+	return nil, &InvalidFunctionProvidedError{pbt.f}
 }
 
 func (pbt *PBTest) satisfyAll(val any) (ok bool, failedpredicates []p.Predicate) {

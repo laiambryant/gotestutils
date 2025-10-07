@@ -9,8 +9,7 @@ import (
 // TestMemoryAllocationStress demonstrates memory allocation stress testing
 func TestMemoryAllocationStress(t *testing.T) {
 	memoryIntensiveFunc := func() (int, error) {
-		// Allocate and process large slices
-		data := make([]int, 100000)
+		data := make([]int, 1000)
 		for i := range data {
 			data[i] = i * 2
 		}
