@@ -61,6 +61,7 @@ func (mt FTAttributes) GetAttributeGivenType(t reflect.Type) (retA Attributes, e
 		return
 	}
 	attrsValType := reflect.TypeOf(attrsVal)
+
 	zero := reflect.Zero(attrsValType).Interface()
 	if reflect.DeepEqual(attrsVal, zero) {
 		retA = retA.GetDefaultImplementation()
@@ -204,12 +205,9 @@ func (a UnsignedIntegerAttributesImpl[T]) getMinMaxAsUint64() (uint64, uint64) {
 // generateRandomUnsignedInteger generates a random unsigned integer within the range and converts back to type T
 func (a UnsignedIntegerAttributesImpl[T]) generateRandomUnsignedInteger(min, max uint64, zero T) any {
 	diff := max - min + 1
-	if diff > 0 {
-		result := min + uint64(rand.Int63n(int64(diff)))
-		resultVal := reflect.ValueOf(result).Convert(reflect.TypeOf(zero))
-		return resultVal.Interface()
-	}
-	return zero
+	result := min + uint64(rand.Int63n(int64(diff)))
+	resultVal := reflect.ValueOf(result).Convert(reflect.TypeOf(zero))
+	return resultVal.Interface()
 }
 
 type FloatAttributesImpl[T Floats] struct {
@@ -508,8 +506,6 @@ func (a SliceAttributes) fillSliceWithRandomElements(result reflect.Value, elemT
 			} else {
 				elemValue = reflect.Zero(elemType)
 			}
-		} else {
-			elemValue = reflect.Zero(elemType)
 		}
 		result.Index(i).Set(elemValue)
 	}
