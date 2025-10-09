@@ -9,7 +9,7 @@ import (
 )
 
 type FTesting struct {
-	f          any // Must be a function type
+	f          any
 	iterations uint
 	attributes a.AttributesStruct
 	t          *testing.T
@@ -27,20 +27,23 @@ func (mt *FTesting) WithAttributes(a a.AttributesStruct) *FTesting {
 
 func (mt *FTesting) GenerateInputs() ([]any, error) {
 	if mt.f == nil {
-		return nil, nil
+		return nil, &NoFunctionProvidedError{}
 	}
 	if reflect.TypeOf(mt.f).Kind() != reflect.Func {
-		return nil, fmt.Errorf("f is not a function: %v", mt.f)
+		return nil, &NotAFunctionError{}
 	}
 	if mt.attributes == nil {
-		mt.attributes = a.FTAttributes{}
+		mt.attributes = a.NewFTAttributes()
 	}
 	fType := reflect.TypeOf(mt.f)
 	args := make([]any, fType.NumIn())
 	for i := 0; i < fType.NumIn(); i++ {
 		argType := fType.In(i)
-		v := mt.attributes.GetAttributeGivenType(argType).GetRandomValue()
-		args[i] = v
+		v, err := mt.attributes.GetAttributeGivenType(argType)
+		if err != nil {
+			return nil, err
+		}
+		args[i] = v.GetRandomValue()
 	}
 	return args, nil
 }
@@ -49,21 +52,16 @@ func (mt *FTesting) ApplyFunction() (bool, error) {
 	if mt.f == nil {
 		return false, fmt.Errorf("function is nil")
 	}
-
 	inputs, err := mt.GenerateInputs()
 	if err != nil {
 		return false, fmt.Errorf("failed to generate inputs: %w", err)
 	}
-
 	args := make([]reflect.Value, len(inputs))
 	for i, input := range inputs {
 		args[i] = reflect.ValueOf(input)
 	}
-
 	fValue := reflect.ValueOf(mt.f)
 	_ = fValue.Call(args)
-
-	// if the function does not panic we assume the test to be succesful
 	return true, nil
 }
 

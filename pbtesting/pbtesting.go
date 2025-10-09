@@ -1,6 +1,7 @@
 package pbtesting
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/laiambryant/gotestutils/ftesting"
@@ -38,10 +39,16 @@ func (pbt *PBTest) WithT(t *testing.T) *PBTest { pbt.t = t; return pbt }
 
 func (pbt *PBTest) WithF(f any) *PBTest { pbt.f = f; return pbt }
 
-func (pbt *PBTest) Run() (retOut []PBTestOut) {
+func (pbt *PBTest) Run() (retOut []PBTestOut, err error) {
+	if pbt.f == nil {
+		return []PBTestOut{}, nil
+	}
 	for i := uint(0); i < pbt.iterations; i++ {
 		fuzzTest := (&ftesting.FTesting{}).WithFunction(pbt.f)
-		inputs, _ := fuzzTest.GenerateInputs()
+		inputs, err := fuzzTest.GenerateInputs()
+		if err != nil {
+			return nil, err
+		}
 		outs, _ := pbt.applyFunction(inputs...)
 		if pbt.haspredicates() {
 			switch ret := outs.(type) {
@@ -54,7 +61,7 @@ func (pbt *PBTest) Run() (retOut []PBTestOut) {
 			}
 		}
 	}
-	return retOut
+	return retOut, nil
 }
 
 func (pbt PBTest) validatePredicates(retOut []PBTestOut, out any) []PBTestOut {
@@ -84,7 +91,37 @@ func (pbt *PBTest) applyFunction(args ...any) (returnTypes, error) {
 	case func(...any) any:
 		return fn(args...), nil
 	}
-	return nil, &InvalidFunctionProvidedError{pbt.f}
+	fValue := reflect.ValueOf(pbt.f)
+	fType := fValue.Type()
+
+	if fType.Kind() != reflect.Func {
+		return nil, &InvalidFunctionProvidedError{pbt.f}
+	}
+	reflectArgs := make([]reflect.Value, len(args))
+	for i, arg := range args {
+		argValue := reflect.ValueOf(arg)
+		expectedType := fType.In(i)
+		if argValue.Type() != expectedType {
+			if argValue.Type().ConvertibleTo(expectedType) {
+				argValue = argValue.Convert(expectedType)
+			} else {
+				return nil, &InvalidFunctionProvidedError{pbt.f}
+			}
+		}
+		reflectArgs[i] = argValue
+	}
+	results := fValue.Call(reflectArgs)
+	if len(results) == 0 {
+		return nil, nil
+	} else if len(results) == 1 {
+		return results[0].Interface(), nil
+	} else {
+		retSlice := make([]any, len(results))
+		for i, result := range results {
+			retSlice[i] = result.Interface()
+		}
+		return retSlice, nil
+	}
 }
 
 func (pbt *PBTest) satisfyAll(val any) (ok bool, failedpredicates []p.Predicate) {

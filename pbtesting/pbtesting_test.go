@@ -155,8 +155,7 @@ func TestApplyFunction_NilFunction(t *testing.T) {
 }
 
 func TestApplyFunction_InvalidFunction(t *testing.T) {
-	invalidFunc := func(a int, b int) int { return a + b }
-	pbt := NewPBTest(invalidFunc)
+	pbt := NewPBTest("not a function")
 	result, err := pbt.applyFunction(1, 2)
 	if err == nil {
 		t.Error("Expected error for invalid function type")
@@ -166,6 +165,120 @@ func TestApplyFunction_InvalidFunction(t *testing.T) {
 	}
 	if _, ok := err.(*InvalidFunctionProvidedError); !ok {
 		t.Errorf("Expected InvalidFunctionProvidedError, got %T", err)
+	}
+}
+
+func TestApplyFunction_ConcreteFunction(t *testing.T) {
+	validFunc := func(a int, b int) int { return a + b }
+	pbt := NewPBTest(validFunc)
+	result, err := pbt.applyFunction(1, 2)
+	if err != nil {
+		t.Errorf("Expected no error for valid function, got %v", err)
+	}
+	if result != 3 {
+		t.Errorf("Expected result 3, got %v", result)
+	}
+}
+
+func TestApplyFunction_TypeConversion(t *testing.T) {
+	funcInt64 := func(a int64) int64 { return a * 2 }
+	pbt := NewPBTest(funcInt64)
+	var input int32 = 42
+	result, err := pbt.applyFunction(input)
+	if err != nil {
+		t.Errorf("Expected no error for convertible types, got %v", err)
+	}
+	expected := int64(84)
+	if result != expected {
+		t.Errorf("Expected result %v, got %v", expected, result)
+	}
+}
+
+func TestApplyFunction_TypeConversionFloat(t *testing.T) {
+	funcFloat64 := func(a float64) float64 { return a + 0.5 }
+	pbt := NewPBTest(funcFloat64)
+	var input float32 = 3.5
+	result, err := pbt.applyFunction(input)
+	if err != nil {
+		t.Errorf("Expected no error for convertible types, got %v", err)
+	}
+	expected := float64(4.0)
+	if result != expected {
+		t.Errorf("Expected result %v, got %v", expected, result)
+	}
+}
+
+func TestApplyFunction_NonConvertibleTypes(t *testing.T) {
+	funcInt := func(a int) int { return a * 2 }
+	pbt := NewPBTest(funcInt)
+	result, err := pbt.applyFunction("not a number")
+	if err == nil {
+		t.Error("Expected error for non-convertible types")
+	}
+	if result != nil {
+		t.Errorf("Expected nil result, got %v", result)
+	}
+	if _, ok := err.(*InvalidFunctionProvidedError); !ok {
+		t.Errorf("Expected InvalidFunctionProvidedError, got %T", err)
+	}
+}
+
+func TestApplyFunction_MultipleReturnValues(t *testing.T) {
+	funcMultiReturn := func(a, b int) (int, int, int) {
+		return a + b, a - b, a * b
+	}
+	pbt := NewPBTest(funcMultiReturn)
+	result, err := pbt.applyFunction(5, 3)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	resultSlice, ok := result.([]any)
+	if !ok {
+		t.Errorf("Expected []any result, got %T", result)
+	}
+	if len(resultSlice) != 3 {
+		t.Errorf("Expected 3 return values, got %d", len(resultSlice))
+	}
+	if resultSlice[0] != 8 {
+		t.Errorf("Expected first return value 8, got %v", resultSlice[0])
+	}
+	if resultSlice[1] != 2 {
+		t.Errorf("Expected second return value 2, got %v", resultSlice[1])
+	}
+	if resultSlice[2] != 15 {
+		t.Errorf("Expected third return value 15, got %v", resultSlice[2])
+	}
+}
+
+func TestApplyFunction_ZeroReturnValues(t *testing.T) {
+	called := false
+	funcNoReturn := func(a int) {
+		called = true
+	}
+	pbt := NewPBTest(funcNoReturn)
+	result, err := pbt.applyFunction(42)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if result != nil {
+		t.Errorf("Expected nil result for function with no return, got %v", result)
+	}
+	if !called {
+		t.Error("Expected function to be called")
+	}
+}
+
+func TestApplyFunction_StructTypeConversion(t *testing.T) {
+	type CustomInt int
+	funcCustom := func(a CustomInt) CustomInt { return a * 2 }
+	pbt := NewPBTest(funcCustom)
+	result, err := pbt.applyFunction(21)
+	if err != nil {
+		t.Errorf("Expected no error for convertible custom types, got %v", err)
+	}
+	expected := CustomInt(42)
+	if result != expected {
+		t.Errorf("Expected result %v, got %v", expected, result)
 	}
 }
 
@@ -450,7 +563,10 @@ func TestRun_WithIntFunction(t *testing.T) {
 		return x * 2
 	}
 	pbt := NewPBTest(intFunc).WithT(t).WithIterations(1)
-	results := pbt.Run()
+	results, err := pbt.Run()
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
 	if len(results) != 0 {
 		t.Errorf("Expected 0 results without predicates, got %d", len(results))
 	}
@@ -461,7 +577,10 @@ func TestRun_WithStringFunction(t *testing.T) {
 		return "Hello " + s
 	}
 	pbt := NewPBTest(stringFunc).WithT(t).WithIterations(1)
-	results := pbt.Run()
+	results, err := pbt.Run()
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
 	if len(results) != 0 {
 		t.Errorf("Expected 0 results without predicates, got %d", len(results))
 	}
@@ -473,7 +592,10 @@ func TestRun_WithPredicatesAndIntFunction(t *testing.T) {
 	}
 	pred := mockPredicate{shouldPass: true, name: "passing_pred"}
 	pbt := NewPBTest(intFunc).WithT(t).WithIterations(1).WithPredicates(pred)
-	results := pbt.Run()
+	results, err := pbt.Run()
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
 	if len(results) == 0 {
 		t.Error("Expected at least 1 result with predicates")
 	}
@@ -490,7 +612,10 @@ func TestRun_WithPredicatesAndStringFunction(t *testing.T) {
 	}
 	pred := mockPredicate{shouldPass: false, name: "failing_pred"}
 	pbt := NewPBTest(stringFunc).WithT(t).WithIterations(1).WithPredicates(pred)
-	results := pbt.Run()
+	results, err := pbt.Run()
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
 	if len(results) == 0 {
 		t.Error("Expected at least 1 result with predicates")
 	}
@@ -510,7 +635,10 @@ func TestRun_WithMultipleIterations(t *testing.T) {
 	}
 	pred := mockPredicate{shouldPass: true, name: "pred"}
 	pbt := NewPBTest(intFunc).WithT(t).WithIterations(3).WithPredicates(pred)
-	results := pbt.Run()
+	results, err := pbt.Run()
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
 	if len(results) == 0 {
 		t.Error("Expected results from multiple iterations")
 	}
@@ -526,7 +654,10 @@ func TestRun_WithArrayReturningFunction(t *testing.T) {
 	}
 	pred := mockPredicate{shouldPass: true, name: "pred"}
 	pbt := NewPBTest(arrayFunc).WithT(t).WithIterations(1).WithPredicates(pred)
-	results := pbt.Run()
+	results, err := pbt.Run()
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
 	expectedResults := 3
 	if len(results) != expectedResults {
 		t.Errorf("Expected %d results from array output, got %d", expectedResults, len(results))
@@ -544,7 +675,10 @@ func TestRun_WithSingleValueReturningFunction(t *testing.T) {
 	}
 	pred := mockPredicate{shouldPass: false, name: "failing_pred"}
 	pbt := NewPBTest(singleFunc).WithT(t).WithIterations(1).WithPredicates(pred)
-	results := pbt.Run()
+	results, err := pbt.Run()
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
 	if len(results) != 1 {
 		t.Errorf("Expected 1 result from single output, got %d", len(results))
 	}
@@ -560,7 +694,10 @@ func TestRun_WithMixedPredicates(t *testing.T) {
 	passingPred := mockPredicate{shouldPass: true, name: "pass"}
 	failingPred := mockPredicate{shouldPass: false, name: "fail"}
 	pbt := NewPBTest(boolFunc).WithT(t).WithIterations(1).WithPredicates(passingPred, failingPred)
-	results := pbt.Run()
+	results, err := pbt.Run()
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
 	if len(results) == 0 {
 		t.Error("Expected at least 1 result")
 	}
@@ -577,7 +714,10 @@ func TestRun_WithMixedPredicates(t *testing.T) {
 func TestRun_WithNilFunction(t *testing.T) {
 	pred := mockPredicate{shouldPass: true, name: "pred"}
 	pbt := NewPBTest(nil).WithT(t).WithIterations(1).WithPredicates(pred)
-	results := pbt.Run()
+	results, err := pbt.Run()
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
 	if len(results) != 0 {
 		t.Errorf("Expected 0 results with nil function, got %d", len(results))
 	}
@@ -589,7 +729,10 @@ func TestRun_ZeroIterations(t *testing.T) {
 	}
 	pred := mockPredicate{shouldPass: true, name: "pred"}
 	pbt := NewPBTest(intFunc).WithT(t).WithIterations(0).WithPredicates(pred)
-	results := pbt.Run()
+	results, err := pbt.Run()
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
 	if len(results) != 0 {
 		t.Errorf("Expected 0 results with 0 iterations, got %d", len(results))
 	}
@@ -601,7 +744,10 @@ func TestRun_ComplexArrayOutput(t *testing.T) {
 	}
 	pred := mockPredicate{shouldPass: true, name: "pred"}
 	pbt := NewPBTest(complexFunc).WithT(t).WithIterations(1).WithPredicates(pred)
-	results := pbt.Run()
+	results, err := pbt.Run()
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
 	if len(results) != 5 {
 		t.Errorf("Expected 5 results from complex array, got %d", len(results))
 	}
@@ -618,7 +764,10 @@ func TestRun_WithTwoParameterFunction(t *testing.T) {
 	}
 	pred := mockPredicate{shouldPass: true, name: "pred"}
 	pbt := NewPBTest(twoParamFunc).WithT(t).WithIterations(1).WithPredicates(pred)
-	results := pbt.Run()
+	results, err := pbt.Run()
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
 	if len(results) == 0 {
 		t.Error("Expected at least 1 result")
 	}
@@ -635,7 +784,10 @@ func TestRun_WithFloatFunction(t *testing.T) {
 	}
 	pred := mockPredicate{shouldPass: false, name: "failing_pred"}
 	pbt := NewPBTest(floatFunc).WithT(t).WithIterations(1).WithPredicates(pred)
-	results := pbt.Run()
+	results, err := pbt.Run()
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
 	if len(results) == 0 {
 		t.Error("Expected at least 1 result")
 	}
@@ -645,3 +797,64 @@ func TestRun_WithFloatFunction(t *testing.T) {
 		}
 	}
 }
+
+func TestRun_GenerateInputsError(t *testing.T) {
+	// Test that Run() returns an error when GenerateInputs() fails
+	// This happens when the function has an unsupported parameter type
+	// (e.g., chan, func, interface)
+	
+	// Function with a channel parameter (unsupported by GenerateInputs)
+	funcWithChannel := func(ch chan int) int {
+		return 42
+	}
+	
+	pbt := NewPBTest(funcWithChannel).WithIterations(1)
+	results, err := pbt.Run()
+	
+	// Should return an error from GenerateInputs
+	if err == nil {
+		t.Error("Expected error when GenerateInputs fails with unsupported type")
+	}
+	
+	// Results should be nil when error occurs
+	if results != nil {
+		t.Errorf("Expected nil results when error occurs, got %v", results)
+	}
+}
+
+func TestRun_GenerateInputsErrorWithFunc(t *testing.T) {
+	// Test with function parameter (another unsupported type)
+	funcWithFunc := func(f func() int) int {
+		return f()
+	}
+	
+	pbt := NewPBTest(funcWithFunc).WithIterations(2)
+	results, err := pbt.Run()
+	
+	if err == nil {
+		t.Error("Expected error when GenerateInputs fails with function parameter")
+	}
+	
+	if results != nil {
+		t.Errorf("Expected nil results when error occurs, got %v", results)
+	}
+}
+
+func TestRun_GenerateInputsErrorWithInterface(t *testing.T) {
+	// Test with interface{} parameter (unsupported by default)
+	funcWithInterface := func(i interface{ DoSomething() }) int {
+		return 42
+	}
+	
+	pbt := NewPBTest(funcWithInterface).WithIterations(1)
+	results, err := pbt.Run()
+	
+	if err == nil {
+		t.Error("Expected error when GenerateInputs fails with interface parameter")
+	}
+	
+	if results != nil {
+		t.Errorf("Expected nil results when error occurs, got %v", results)
+	}
+}
+

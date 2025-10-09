@@ -11,7 +11,7 @@ type Attributes interface {
 }
 
 type AttributesStruct interface {
-	GetAttributeGivenType(t reflect.Type) (retA Attributes)
+	GetAttributeGivenType(t reflect.Type) (retA Attributes, err error)
 }
 
 // Type Interfaces

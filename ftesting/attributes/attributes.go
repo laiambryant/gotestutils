@@ -22,33 +22,79 @@ type FTAttributes struct {
 	ArrayAttr    ArrayAttributes
 }
 
-func (mt FTAttributes) GetAttributeGivenType(t reflect.Type) (retA Attributes) {
+func NewFTAttributes() FTAttributes {
+	return FTAttributes{
+		IntegerAttr:  IntegerAttributesImpl[int]{AllowNegative: true, AllowZero: true, Max: 100, Min: -100},
+		UIntegerAttr: UnsignedIntegerAttributesImpl[uint]{Signed: true, AllowNegative: true, AllowZero: true, Max: 100, Min: 0},
+		FloatAttr:    FloatAttributesImpl[float64]{Min: -100.0, Max: 100.0, NonZero: true, FiniteOnly: true},
+		ComplexAttr:  ComplexAttributesImpl[complex128]{RealMin: -10.0, RealMax: 10.0, ImagMin: -10.0, ImagMax: 10.0},
+		StringAttr:   StringAttributes{MinLen: 1, MaxLen: 10},
+		SliceAttr:    SliceAttributes{MinLen: 1, MaxLen: 5, ElementAttrs: IntegerAttributesImpl[int]{}},
+		BoolAttr:     BoolAttributes{ForceTrue: false},
+		MapAttr:      MapAttributes{MinSize: 1, MaxSize: 5, KeyAttrs: StringAttributes{MinLen: 1, MaxLen: 5}, ValueAttrs: IntegerAttributesImpl[int]{}},
+		PointerAttr:  PointerAttributes{AllowNil: true, Depth: 1, Inner: IntegerAttributesImpl[int]{}},
+		StructAttr:   StructAttributes{FieldAttrs: map[string]any{"Field1": IntegerAttributesImpl[int]{}, "Field2": FloatAttributesImpl[float32]{Min: -10.0, Max: 10.0}}},
+		ArrayAttr:    ArrayAttributes{Length: 5, ElementAttrs: IntegerAttributesImpl[int]{}},
+	}
+}
+
+func (mt FTAttributes) GetAttributeGivenType(t reflect.Type) (retA Attributes, err error) {
+	if t == nil {
+		return nil, NilTypeError{}
+	}
 	kindMap := map[reflect.Kind]Attributes{
 		reflect.Int: mt.IntegerAttr, reflect.Int8: mt.IntegerAttr, reflect.Int16: mt.IntegerAttr, reflect.Int32: mt.IntegerAttr, reflect.Int64: mt.IntegerAttr,
 		reflect.Uint: mt.UIntegerAttr, reflect.Uint8: mt.UIntegerAttr, reflect.Uint16: mt.UIntegerAttr, reflect.Uint32: mt.UIntegerAttr, reflect.Uint64: mt.UIntegerAttr,
 		reflect.Float32: mt.FloatAttr, reflect.Float64: mt.FloatAttr,
 		reflect.Complex64: mt.ComplexAttr, reflect.Complex128: mt.ComplexAttr,
 		reflect.String: mt.StringAttr, reflect.Slice: mt.SliceAttr, reflect.Bool: mt.BoolAttr,
-		reflect.Map: mt.MapAttr, reflect.Ptr: mt.PointerAttr, reflect.Struct: mt.StructAttr, reflect.Array: mt.ArrayAttr,
+		reflect.Map: mt.MapAttr, reflect.Pointer: mt.PointerAttr, reflect.Struct: mt.StructAttr, reflect.Array: mt.ArrayAttr,
 	}
 	retA = kindMap[t.Kind()]
-	if retA != nil {
-		attrsVal := retA.GetAttributes()
-		if attrsVal == nil {
-			retA = retA.GetDefaultImplementation()
-			return
-		}
-		attrsValType := reflect.TypeOf(attrsVal)
-		if attrsValType == nil {
-			retA = retA.GetDefaultImplementation()
-			return
-		}
-		zero := reflect.Zero(attrsValType).Interface()
-		if reflect.DeepEqual(attrsVal, zero) {
-			retA = retA.GetDefaultImplementation()
-		}
+	if retA == nil {
+		retA, err = mt.getDefaultForKind(t.Kind())
+		return
+	}
+	attrsVal := retA.GetAttributes()
+	if attrsVal == nil {
+		retA = retA.GetDefaultImplementation()
+		return
+	}
+	attrsValType := reflect.TypeOf(attrsVal)
+	zero := reflect.Zero(attrsValType).Interface()
+	if reflect.DeepEqual(attrsVal, zero) {
+		retA = retA.GetDefaultImplementation()
 	}
 	return
+}
+
+func (mt FTAttributes) getDefaultForKind(kind reflect.Kind) (Attributes, error) {
+	switch kind {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return IntegerAttributesImpl[int64]{}.GetDefaultImplementation(), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return UnsignedIntegerAttributesImpl[uint64]{}.GetDefaultImplementation(), nil
+	case reflect.Float32, reflect.Float64:
+		return FloatAttributesImpl[float64]{}.GetDefaultImplementation(), nil
+	case reflect.Complex64, reflect.Complex128:
+		return ComplexAttributesImpl[complex128]{}.GetDefaultImplementation(), nil
+	case reflect.String:
+		return StringAttributes{}.GetDefaultImplementation(), nil
+	case reflect.Slice:
+		return SliceAttributes{}.GetDefaultImplementation(), nil
+	case reflect.Bool:
+		return BoolAttributes{}.GetDefaultImplementation(), nil
+	case reflect.Map:
+		return MapAttributes{}.GetDefaultImplementation(), nil
+	case reflect.Pointer:
+		return PointerAttributes{}.GetDefaultImplementation(), nil
+	case reflect.Struct:
+		return StructAttributes{}.GetDefaultImplementation(), nil
+	case reflect.Array:
+		return ArrayAttributes{}.GetDefaultImplementation(), nil
+	default:
+		return nil, UnsupportedAttributeTypeError{kind}
+	}
 }
 
 type IntegerAttributesImpl[T Integers] struct {
@@ -77,12 +123,10 @@ func (a IntegerAttributesImpl[T]) GetRandomValue() any {
 	if !a.isValidRange(zero) {
 		return zero
 	}
-
 	min, max := a.getMinMaxAsInt64()
 	if max <= min {
 		return zero
 	}
-
 	return a.generateRandomInteger(min, max, zero)
 }
 
