@@ -16,7 +16,7 @@ func TestMemoryAllocationStress(t *testing.T) {
 		return len(data), nil
 	}
 	var dummyVar int
-	stressTest := stesting.NewStressTest[int, int](100, memoryIntensiveFunc, &dummyVar)
+	stressTest := stesting.NewStressTest(100, memoryIntensiveFunc, &dummyVar)
 	success, err := stesting.RunStressTestWithFilePathOut(&stressTest, "memory_test.log")
 	if !success {
 		t.Errorf("Memory stress test failed: %v", err)
