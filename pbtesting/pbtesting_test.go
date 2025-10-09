@@ -802,59 +802,54 @@ func TestRun_GenerateInputsError(t *testing.T) {
 	// Test that Run() returns an error when GenerateInputs() fails
 	// This happens when the function has an unsupported parameter type
 	// (e.g., chan, func, interface)
-	
+
 	// Function with a channel parameter (unsupported by GenerateInputs)
 	funcWithChannel := func(ch chan int) int {
 		return 42
 	}
-	
+
 	pbt := NewPBTest(funcWithChannel).WithIterations(1)
 	results, err := pbt.Run()
-	
-	// Should return an error from GenerateInputs
+
 	if err == nil {
 		t.Error("Expected error when GenerateInputs fails with unsupported type")
 	}
-	
-	// Results should be nil when error occurs
+
 	if results != nil {
 		t.Errorf("Expected nil results when error occurs, got %v", results)
 	}
 }
 
 func TestRun_GenerateInputsErrorWithFunc(t *testing.T) {
-	// Test with function parameter (another unsupported type)
 	funcWithFunc := func(f func() int) int {
 		return f()
 	}
-	
+
 	pbt := NewPBTest(funcWithFunc).WithIterations(2)
 	results, err := pbt.Run()
-	
+
 	if err == nil {
 		t.Error("Expected error when GenerateInputs fails with function parameter")
 	}
-	
+
 	if results != nil {
 		t.Errorf("Expected nil results when error occurs, got %v", results)
 	}
 }
 
 func TestRun_GenerateInputsErrorWithInterface(t *testing.T) {
-	// Test with interface{} parameter (unsupported by default)
 	funcWithInterface := func(i interface{ DoSomething() }) int {
 		return 42
 	}
-	
+
 	pbt := NewPBTest(funcWithInterface).WithIterations(1)
 	results, err := pbt.Run()
-	
+
 	if err == nil {
 		t.Error("Expected error when GenerateInputs fails with interface parameter")
 	}
-	
+
 	if results != nil {
 		t.Errorf("Expected nil results when error occurs, got %v", results)
 	}
 }
-
