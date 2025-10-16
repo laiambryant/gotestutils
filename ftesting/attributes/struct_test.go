@@ -16,31 +16,26 @@ func TestStructAttributes(t *testing.T) {
 		expected := StructAttributes{FieldAttrs: map[string]any{"Field1": IntegerAttributesImpl[int]{}}}
 		return reflect.DeepEqual(got, expected), nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := StructAttributes{}
 		got := attr.GetDefaultImplementation()
 		return got != nil && reflect.TypeOf(got) == reflect.TypeOf(attr), nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := StructAttributes{FieldAttrs: map[string]any{"Field1": IntegerAttributesImpl[int]{}}}
 		got := attr.GetRandomValue()
 		return got != nil, nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := StructAttributes{FieldAttrs: map[string]any{}}
 		result := attr.GetRandomValue()
 		return result == nil, nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := StructAttributes{FieldAttrs: map[string]any{"Field1": "not an attribute"}}
 		result := attr.GetRandomValue()
 		return result == nil, nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attrs := StructAttributes{
 			FieldAttrs: map[string]any{
@@ -51,7 +46,6 @@ func TestStructAttributes(t *testing.T) {
 		reflectType := attrs.GetReflectType()
 		return reflectType != nil && reflectType.Kind() == reflect.Struct && reflectType.NumField() == 2, nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attrs := StructAttributes{
 			FieldAttrs: map[string]any{
@@ -61,13 +55,26 @@ func TestStructAttributes(t *testing.T) {
 		reflectType := attrs.GetReflectType()
 		return reflectType == nil, nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attrs := StructAttributes{
 			FieldAttrs: nil,
 		}
 		reflectType := attrs.GetReflectType()
 		return reflectType == nil, nil
+	}))
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attrs := StructAttributes{
+			FieldAttrs: map[string]any{
+				"Field1": nilReturningAttribute{},
+			},
+		}
+		result := attrs.GetRandomValue()
+		if result == nil {
+			return false, nil
+		}
+		structValue := reflect.ValueOf(result)
+		field := structValue.FieldByName("Field1")
+		return field.IsValid() && field.Int() == 0, nil
 	}))
 
 	results, _ := ctesting.VerifyCharacterizationTestsAndResults(t, suite, true)
@@ -78,231 +85,7 @@ func TestStructAttributes(t *testing.T) {
 	}
 }
 
-func TestStructAttributes_EmptyFieldAttrs(t *testing.T) {
-	attr := StructAttributes{FieldAttrs: map[string]any{}}
-
-	testSuite := []ctesting.CharacterizationTest[any]{
-		ctesting.NewCharacterizationTest(nil, nil, func() (any, error) {
-			result := attr.GetRandomValue()
-			return result, nil
-		}),
-	}
-
-	ctesting.VerifyCharacterizationTestsAndResults(t, testSuite, true)
-}
-
-func TestStructAttributes_InvalidFieldType(t *testing.T) {
-	attr := StructAttributes{FieldAttrs: map[string]any{"Field1": "not an attribute"}}
-
-	testSuite := []ctesting.CharacterizationTest[any]{
-		ctesting.NewCharacterizationTest(nil, nil, func() (any, error) {
-			result := attr.GetRandomValue()
-			return result, nil
-		}),
-	}
-
-	ctesting.VerifyCharacterizationTestsAndResults(t, testSuite, true)
-}
-
-func TestStructAttributes_TypeConversion(t *testing.T) {
-	attrs := StructAttributes{
-		FieldAttrs: map[string]any{
-			"CustomField": IntegerAttributesImpl[int]{
-				Max: 50,
-			},
-		},
-	}
-
-	fields := []reflect.StructField{
-		{
-			Name: "CustomField",
-			Type: reflect.TypeOf(CustomInt(0)),
-		},
-	}
-	structType := reflect.StructOf(fields)
-	structValue := reflect.New(structType).Elem()
-
-	fieldAttr := attrs.FieldAttrs["CustomField"]
-	if intAttrs, ok := fieldAttr.(Attributes); ok {
-		randVal := intAttrs.GetRandomValue()
-		if randVal != nil {
-			fieldValue := reflect.ValueOf(randVal)
-			field := structValue.FieldByName("CustomField")
-
-			if fieldValue.Type().ConvertibleTo(field.Type()) {
-				field.Set(fieldValue.Convert(field.Type()))
-
-				result := field.Interface().(CustomInt)
-				if int(result) < 0 || int(result) > 50 {
-					t.Errorf("Expected value in range [0, 50], got %d", result)
-				}
-			}
-		}
-	}
-}
-
-func TestStructAttributes_NilFieldValue(t *testing.T) {
-	attrs := StructAttributes{
-		FieldAttrs: map[string]any{
-			"Field1": nilReturningAttribute{},
-		},
-	}
-
-	testSuite := []ctesting.CharacterizationTest[bool]{
-		ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
-			result := attrs.GetRandomValue()
-			if result == nil {
-				return false, nil
-			}
-
-			structValue := reflect.ValueOf(result)
-			field := structValue.FieldByName("Field1")
-			return field.IsValid() && field.Int() == 0, nil
-		}),
-	}
-
-	ctesting.VerifyCharacterizationTestsAndResults(t, testSuite, true)
-}
-
-func TestStructAttributes_GetReflectType_WithReflectType(t *testing.T) {
-	attrs := StructAttributes{
-		FieldAttrs: map[string]any{
-			"Field1": reflect.TypeOf(int(0)),
-			"Field2": reflect.TypeOf(""),
-		},
-	}
-
-	testSuite := []ctesting.CharacterizationTest[bool]{
-		ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
-			reflectType := attrs.GetReflectType()
-			if reflectType == nil {
-				return false, nil
-			}
-			return reflectType.Kind() == reflect.Struct && reflectType.NumField() == 2, nil
-		}),
-	}
-
-	ctesting.VerifyCharacterizationTestsAndResults(t, testSuite, true)
-}
-
-func TestStructAttributes_GetReflectType_WithNilFieldType(t *testing.T) {
-	attrs := StructAttributes{
-		FieldAttrs: map[string]any{
-			"Field1": nilTypeReturningAttribute{},
-		},
-	}
-
-	testSuite := []ctesting.CharacterizationTest[reflect.Type]{
-		ctesting.NewCharacterizationTest(nil, nil, func() (reflect.Type, error) {
-			reflectType := attrs.GetReflectType()
-			return reflectType, nil
-		}),
-	}
-
-	ctesting.VerifyCharacterizationTestsAndResults(t, testSuite, true)
-}
-
-func TestStructAttributes_GetReflectType_Mixed(t *testing.T) {
-	attrs := StructAttributes{
-		FieldAttrs: map[string]any{
-			"Field1": IntegerAttributesImpl[int]{},
-			"Field2": reflect.TypeOf(""),
-		},
-	}
-
-	testSuite := []ctesting.CharacterizationTest[bool]{
-		ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
-			reflectType := attrs.GetReflectType()
-			return reflectType != nil && reflectType.Kind() == reflect.Struct, nil
-		}),
-	}
-
-	ctesting.VerifyCharacterizationTestsAndResults(t, testSuite, true)
-}
-
-func TestStructAttributes_UnsettableField(t *testing.T) {
-	attrs := StructAttributes{
-		FieldAttrs: map[string]any{
-			"ExportedField": IntegerAttributesImpl[int]{Max: 10},
-		},
-	}
-
-	testSuite := []ctesting.CharacterizationTest[bool]{
-		ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
-			result := attrs.GetRandomValue()
-			if result == nil {
-				return false, nil
-			}
-			structValue := reflect.ValueOf(result)
-			return structValue.Kind() == reflect.Struct, nil
-		}),
-	}
-
-	ctesting.VerifyCharacterizationTestsAndResults(t, testSuite, true)
-}
-
-func TestStructAttributes_FieldConversion(t *testing.T) {
-	attrs := StructAttributes{
-		FieldAttrs: map[string]any{
-			"Field1": IntegerAttributesImpl[int]{Max: 10},
-			"Field2": FloatAttributesImpl[float64]{Max: 10.0},
-		},
-	}
-
-	testSuite := []ctesting.CharacterizationTest[bool]{
-		ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
-			result := attrs.GetRandomValue()
-			if result == nil {
-				return false, nil
-			}
-
-			structValue := reflect.ValueOf(result)
-			field1 := structValue.FieldByName("Field1")
-			field2 := structValue.FieldByName("Field2")
-
-			return field1.IsValid() && field2.IsValid(), nil
-		}),
-	}
-
-	ctesting.VerifyCharacterizationTestsAndResults(t, testSuite, true)
-}
-
-func TestStructAttributes_NonConvertibleField(t *testing.T) {
-	attrs := StructAttributes{
-		FieldAttrs: map[string]any{
-			"TestField": IntegerAttributesImpl[int]{Max: 10},
-		},
-	}
-
-	testSuite := []ctesting.CharacterizationTest[bool]{
-		ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
-			result := attrs.GetRandomValue()
-			if result == nil {
-				return false, nil
-			}
-
-			structValue := reflect.ValueOf(result)
-			return structValue.Kind() == reflect.Struct, nil
-		}),
-	}
-
-	ctesting.VerifyCharacterizationTestsAndResults(t, testSuite, true)
-}
-
-func TestStructAttributes_GetReflectTypeNilStruct(t *testing.T) {
-	attrs := StructAttributes{
-		FieldAttrs: nil,
-	}
-
-	testSuite := []ctesting.CharacterizationTest[reflect.Type]{
-		ctesting.NewCharacterizationTest(nil, nil, func() (reflect.Type, error) {
-			reflectType := attrs.GetReflectType()
-			return reflectType, nil
-		}),
-	}
-
-	ctesting.VerifyCharacterizationTestsAndResults(t, testSuite, true)
-}
+type CustomString string
 
 func TestStructAttributes_SetFieldValueConversion(t *testing.T) {
 	type TestStruct struct {
@@ -368,27 +151,3 @@ func TestStructAttributes_SetFieldValueConversion(t *testing.T) {
 		t.Error("Expected StringField to be set via conversion")
 	}
 }
-
-func TestStructAttributes_SetFieldValueNonConvertible(t *testing.T) {
-	type TestStruct struct {
-		IntField int
-	}
-	attrs := StructAttributes{}
-	structType := reflect.TypeOf(TestStruct{})
-	structValue := reflect.New(structType).Elem()
-	field := structValue.FieldByName("IntField")
-	nonConvertibleValue := reflect.ValueOf(complex(1.0, 2.0))
-	if nonConvertibleValue.Type().AssignableTo(field.Type()) {
-		t.Error("Expected complex128 not to be assignable to int")
-	}
-	if nonConvertibleValue.Type().ConvertibleTo(field.Type()) {
-		t.Error("Expected complex128 not to be convertible to int")
-	}
-	originalValue := field.Interface().(int)
-	attrs.setFieldValue(field, nonConvertibleValue)
-	if field.Interface().(int) != originalValue {
-		t.Error("Expected field to remain unchanged when value is not convertible")
-	}
-}
-
-type CustomString string

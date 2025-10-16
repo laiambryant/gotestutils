@@ -39,17 +39,7 @@ type nilTypeReturningAttribute struct{}
 
 func (n nilTypeReturningAttribute) GetAttributes() any { return n }
 func (n nilTypeReturningAttribute) GetReflectType() reflect.Type {
-	return nil // Returns nil type
+	return nil
 }
 func (n nilTypeReturningAttribute) GetRandomValue() any                  { return nil }
 func (n nilTypeReturningAttribute) GetDefaultImplementation() Attributes { return n }
-
-// Small helper used in some tests
-func isNilValidForType(attr Attributes) bool {
-	switch attr.(type) {
-	case PointerAttributes:
-		return true
-	default:
-		return false
-	}
-}
