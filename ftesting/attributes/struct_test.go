@@ -200,3 +200,92 @@ func TestStructAttributes_GetReflectTypeNilStruct(t *testing.T) {
 		t.Fatal("Expected nil reflect type for nil struct")
 	}
 }
+
+func TestStructAttributes_SetFieldValueConversion(t *testing.T) {
+	type TestStruct struct {
+		IntField    int32
+		FloatField  float32
+		StringField CustomString
+	}
+	attrs := StructAttributes{
+		FieldAttrs: map[string]any{
+			"IntField":    IntegerAttributesImpl[int]{Min: 1, Max: 10},
+			"FloatField":  FloatAttributesImpl[float64]{Min: 1.0, Max: 10.0},
+			"StringField": StringAttributes{MinLen: 3, MaxLen: 5},
+		},
+	}
+	structType := reflect.TypeOf(TestStruct{})
+	structValue := reflect.New(structType).Elem()
+	intAttr := attrs.FieldAttrs["IntField"].(IntegerAttributesImpl[int])
+	intRandVal := intAttr.GetRandomValue()
+	intFieldValue := reflect.ValueOf(intRandVal)
+	intField := structValue.FieldByName("IntField")
+	if intFieldValue.Type().AssignableTo(intField.Type()) {
+		t.Error("Expected int not to be directly assignable to int32")
+	}
+	if !intFieldValue.Type().ConvertibleTo(intField.Type()) {
+		t.Error("Expected int to be convertible to int32")
+	}
+	attrs.setFieldValue(intField, intFieldValue)
+	if intField.Interface().(int32) == 0 {
+		t.Error("Expected int32 field to be set via conversion")
+	}
+	floatAttr := attrs.FieldAttrs["FloatField"].(FloatAttributesImpl[float64])
+	floatRandVal := floatAttr.GetRandomValue()
+	floatFieldValue := reflect.ValueOf(floatRandVal)
+	floatField := structValue.FieldByName("FloatField")
+	if floatFieldValue.Type().AssignableTo(floatField.Type()) {
+		t.Error("Expected float64 not to be directly assignable to float32")
+	}
+	if !floatFieldValue.Type().ConvertibleTo(floatField.Type()) {
+		t.Error("Expected float64 to be convertible to float32")
+	}
+	attrs.setFieldValue(floatField, floatFieldValue)
+	if floatField.Interface().(float32) == 0.0 {
+		t.Error("Expected float32 field to be set via conversion")
+	}
+	result := attrs.GetRandomValue()
+	if result == nil {
+		t.Fatal("Expected non-nil struct with type conversions")
+	}
+	resultValue := reflect.ValueOf(result)
+	if resultValue.Kind() != reflect.Struct {
+		t.Fatal("Expected struct result")
+	}
+	intFieldResult := resultValue.FieldByName("IntField")
+	if !intFieldResult.IsValid() || intFieldResult.Interface().(int) == 0 {
+		t.Error("Expected IntField to be set via conversion")
+	}
+	floatFieldResult := resultValue.FieldByName("FloatField")
+	if !floatFieldResult.IsValid() || floatFieldResult.Interface().(float64) == 0.0 {
+		t.Error("Expected FloatField to be set via conversion")
+	}
+	stringFieldResult := resultValue.FieldByName("StringField")
+	if !stringFieldResult.IsValid() || stringFieldResult.Interface().(string) == "" {
+		t.Error("Expected StringField to be set via conversion")
+	}
+}
+
+func TestStructAttributes_SetFieldValueNonConvertible(t *testing.T) {
+	type TestStruct struct {
+		IntField int
+	}
+	attrs := StructAttributes{}
+	structType := reflect.TypeOf(TestStruct{})
+	structValue := reflect.New(structType).Elem()
+	field := structValue.FieldByName("IntField")
+	nonConvertibleValue := reflect.ValueOf(complex(1.0, 2.0))
+	if nonConvertibleValue.Type().AssignableTo(field.Type()) {
+		t.Error("Expected complex128 not to be assignable to int")
+	}
+	if nonConvertibleValue.Type().ConvertibleTo(field.Type()) {
+		t.Error("Expected complex128 not to be convertible to int")
+	}
+	originalValue := field.Interface().(int)
+	attrs.setFieldValue(field, nonConvertibleValue)
+	if field.Interface().(int) != originalValue {
+		t.Error("Expected field to remain unchanged when value is not convertible")
+	}
+}
+
+type CustomString string
