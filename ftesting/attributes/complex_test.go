@@ -84,91 +84,76 @@ func TestComplexAttributes(t *testing.T) {
 		return real >= -10.0 && real <= 10.0 && imag >= -10.0 && imag <= 10.0, nil
 	}))
 
+	// Additional tests from individual test functions
+	// TestComplexAttributes_Valid
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attrs := ComplexAttributesImpl[complex128]{RealMin: -10.0, RealMax: 10.0, ImagMin: -5.0, ImagMax: 5.0}
+		result := attrs.GetRandomValue()
+		if result == nil {
+			return false, nil
+		}
+		c := result.(complex128)
+		real := real(c)
+		imag := imag(c)
+		return real >= -10.0 && real <= 10.0 && imag >= -5.0 && imag <= 5.0, nil
+	}))
+
+	// TestComplexAttributes_InvalidImagBounds
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attrs := ComplexAttributesImpl[complex128]{
+			RealMin: -5.0,
+			RealMax: 5.0,
+			ImagMin: 10.0,
+			ImagMax: 5.0,
+		}
+		result := attrs.GetRandomValue()
+		if result == nil {
+			return false, nil
+		}
+		c := result.(complex128)
+		imag := imag(c)
+		return imag >= -10.0 && imag <= 10.0, nil
+	}))
+
+	// TestComplexAttributes_BothInvalidBounds
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attrs := ComplexAttributesImpl[complex128]{
+			RealMin: 10.0,
+			RealMax: 5.0,
+			ImagMin: 10.0,
+			ImagMax: 5.0,
+		}
+		result := attrs.GetRandomValue()
+		if result == nil {
+			return false, nil
+		}
+		c := result.(complex128)
+		real := real(c)
+		imag := imag(c)
+		return real >= -10.0 && real <= 10.0 && imag >= -10.0 && imag <= 10.0, nil
+	}))
+
+	// TestComplexAttributes_InvalidRealBounds
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attrs := ComplexAttributesImpl[complex128]{
+			RealMin: 10.0,
+			RealMax: 5.0,
+			ImagMin: -5.0,
+			ImagMax: 5.0,
+		}
+		result := attrs.GetRandomValue()
+		if result == nil {
+			return false, nil
+		}
+		c := result.(complex128)
+		real := real(c)
+		return real >= -10.0 && real <= 10.0, nil
+	}))
+
 	results, _ := ctesting.VerifyCharacterizationTestsAndResults(t, suite, true)
 	for i, passed := range results {
 		if !passed {
 			t.Fatalf("ComplexAttributes test %d failed", i+1)
 		}
-	}
-}
-
-func TestComplexAttributes_Valid(t *testing.T) {
-	attrs := ComplexAttributesImpl[complex128]{RealMin: -10.0, RealMax: 10.0, ImagMin: -5.0, ImagMax: 5.0}
-	result := attrs.GetRandomValue()
-	if result == nil {
-		t.Fatal("Expected non-nil complex number")
-	}
-	c := result.(complex128)
-	real := real(c)
-	imag := imag(c)
-	if real < -10.0 || real > 10.0 {
-		t.Errorf("Expected real part in range [-10, 10], got %f", real)
-	}
-	if imag < -5.0 || imag > 5.0 {
-		t.Errorf("Expected imaginary part in range [-5, 5], got %f", imag)
-	}
-}
-
-func TestComplexAttributes_InvalidImagBounds(t *testing.T) {
-	attrs := ComplexAttributesImpl[complex128]{
-		RealMin: -5.0,
-		RealMax: 5.0,
-		ImagMin: 10.0,
-		ImagMax: 5.0,
-	}
-
-	result := attrs.GetRandomValue()
-	if result == nil {
-		t.Fatal("Expected non-nil complex number")
-	}
-
-	c := result.(complex128)
-	imag := imag(c)
-	if imag < -10.0 || imag > 10.0 {
-		t.Errorf("Expected imaginary part in default range [-10, 10], got %f", imag)
-	}
-}
-
-func TestComplexAttributes_BothInvalidBounds(t *testing.T) {
-	attrs := ComplexAttributesImpl[complex128]{
-		RealMin: 10.0,
-		RealMax: 5.0,
-		ImagMin: 10.0,
-		ImagMax: 5.0,
-	}
-
-	result := attrs.GetRandomValue()
-	if result == nil {
-		t.Fatal("Expected non-nil complex number")
-	}
-
-	c := result.(complex128)
-	real := real(c)
-	imag := imag(c)
-	if real < -10.0 || real > 10.0 {
-		t.Errorf("Expected real part in default range [-10, 10], got %f", real)
-	}
-	if imag < -10.0 || imag > 10.0 {
-		t.Errorf("Expected imaginary part in default range [-10, 10], got %f", imag)
-	}
-}
-
-func TestComplexAttributes_InvalidRealBounds(t *testing.T) {
-	attrs := ComplexAttributesImpl[complex128]{
-		RealMin: 10.0,
-		RealMax: 5.0,
-		ImagMin: -5.0,
-		ImagMax: 5.0,
-	}
-
-	result := attrs.GetRandomValue()
-	if result == nil {
-		t.Fatal("Expected non-nil complex number")
-	}
-
-	c := result.(complex128)
-	real := real(c)
-	if real < -10.0 || real > 10.0 {
-		t.Errorf("Expected real part in default range [-10, 10], got %f", real)
 	}
 }

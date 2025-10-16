@@ -3,22 +3,105 @@ package attributes
 import (
 	"reflect"
 	"testing"
+
+	"github.com/laiambryant/gotestutils/ctesting"
 )
+
+func TestStructAttributes(t *testing.T) {
+	var suite []ctesting.CharacterizationTest[bool]
+
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attr := StructAttributes{FieldAttrs: map[string]any{"Field1": IntegerAttributesImpl[int]{}}}
+		got := attr.GetAttributes()
+		expected := StructAttributes{FieldAttrs: map[string]any{"Field1": IntegerAttributesImpl[int]{}}}
+		return reflect.DeepEqual(got, expected), nil
+	}))
+
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attr := StructAttributes{}
+		got := attr.GetDefaultImplementation()
+		return got != nil && reflect.TypeOf(got) == reflect.TypeOf(attr), nil
+	}))
+
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attr := StructAttributes{FieldAttrs: map[string]any{"Field1": IntegerAttributesImpl[int]{}}}
+		got := attr.GetRandomValue()
+		return got != nil, nil
+	}))
+
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attr := StructAttributes{FieldAttrs: map[string]any{}}
+		result := attr.GetRandomValue()
+		return result == nil, nil
+	}))
+
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attr := StructAttributes{FieldAttrs: map[string]any{"Field1": "not an attribute"}}
+		result := attr.GetRandomValue()
+		return result == nil, nil
+	}))
+
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attrs := StructAttributes{
+			FieldAttrs: map[string]any{
+				"Field1": reflect.TypeOf(int(0)),
+				"Field2": reflect.TypeOf(""),
+			},
+		}
+		reflectType := attrs.GetReflectType()
+		return reflectType != nil && reflectType.Kind() == reflect.Struct && reflectType.NumField() == 2, nil
+	}))
+
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attrs := StructAttributes{
+			FieldAttrs: map[string]any{
+				"Field1": nilTypeReturningAttribute{},
+			},
+		}
+		reflectType := attrs.GetReflectType()
+		return reflectType == nil, nil
+	}))
+
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attrs := StructAttributes{
+			FieldAttrs: nil,
+		}
+		reflectType := attrs.GetReflectType()
+		return reflectType == nil, nil
+	}))
+
+	results, _ := ctesting.VerifyCharacterizationTestsAndResults(t, suite, true)
+	for i, passed := range results {
+		if !passed {
+			t.Fatalf("StructAttributes test %d failed", i+1)
+		}
+	}
+}
 
 func TestStructAttributes_EmptyFieldAttrs(t *testing.T) {
 	attr := StructAttributes{FieldAttrs: map[string]any{}}
-	result := attr.GetRandomValue()
-	if result != nil {
-		t.Errorf("Expected nil for empty field attributes, got %v", result)
+
+	testSuite := []ctesting.CharacterizationTest[any]{
+		ctesting.NewCharacterizationTest(nil, nil, func() (any, error) {
+			result := attr.GetRandomValue()
+			return result, nil
+		}),
 	}
+
+	ctesting.VerifyCharacterizationTestsAndResults(t, testSuite, true)
 }
 
 func TestStructAttributes_InvalidFieldType(t *testing.T) {
 	attr := StructAttributes{FieldAttrs: map[string]any{"Field1": "not an attribute"}}
-	result := attr.GetRandomValue()
-	if result != nil {
-		t.Errorf("Expected nil for invalid field type, got %v", result)
+
+	testSuite := []ctesting.CharacterizationTest[any]{
+		ctesting.NewCharacterizationTest(nil, nil, func() (any, error) {
+			result := attr.GetRandomValue()
+			return result, nil
+		}),
 	}
+
+	ctesting.VerifyCharacterizationTestsAndResults(t, testSuite, true)
 }
 
 func TestStructAttributes_TypeConversion(t *testing.T) {
@@ -65,19 +148,20 @@ func TestStructAttributes_NilFieldValue(t *testing.T) {
 		},
 	}
 
-	result := attrs.GetRandomValue()
-	if result == nil {
-		t.Fatal("Expected non-nil struct")
+	testSuite := []ctesting.CharacterizationTest[bool]{
+		ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+			result := attrs.GetRandomValue()
+			if result == nil {
+				return false, nil
+			}
+
+			structValue := reflect.ValueOf(result)
+			field := structValue.FieldByName("Field1")
+			return field.IsValid() && field.Int() == 0, nil
+		}),
 	}
 
-	structValue := reflect.ValueOf(result)
-	field := structValue.FieldByName("Field1")
-	if !field.IsValid() {
-		t.Error("Expected valid field")
-	}
-	if field.Int() != 0 {
-		t.Errorf("Expected zero value for field, got %v", field.Interface())
-	}
+	ctesting.VerifyCharacterizationTestsAndResults(t, testSuite, true)
 }
 
 func TestStructAttributes_GetReflectType_WithReflectType(t *testing.T) {
@@ -88,18 +172,17 @@ func TestStructAttributes_GetReflectType_WithReflectType(t *testing.T) {
 		},
 	}
 
-	reflectType := attrs.GetReflectType()
-	if reflectType == nil {
-		t.Fatal("Expected non-nil reflect type for struct")
+	testSuite := []ctesting.CharacterizationTest[bool]{
+		ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+			reflectType := attrs.GetReflectType()
+			if reflectType == nil {
+				return false, nil
+			}
+			return reflectType.Kind() == reflect.Struct && reflectType.NumField() == 2, nil
+		}),
 	}
 
-	if reflectType.Kind() != reflect.Struct {
-		t.Errorf("Expected struct kind, got %v", reflectType.Kind())
-	}
-
-	if reflectType.NumField() != 2 {
-		t.Errorf("Expected 2 fields, got %d", reflectType.NumField())
-	}
+	ctesting.VerifyCharacterizationTestsAndResults(t, testSuite, true)
 }
 
 func TestStructAttributes_GetReflectType_WithNilFieldType(t *testing.T) {
@@ -109,10 +192,14 @@ func TestStructAttributes_GetReflectType_WithNilFieldType(t *testing.T) {
 		},
 	}
 
-	reflectType := attrs.GetReflectType()
-	if reflectType != nil {
-		t.Errorf("Expected nil reflect type when field returns nil type, got %v", reflectType)
+	testSuite := []ctesting.CharacterizationTest[reflect.Type]{
+		ctesting.NewCharacterizationTest(nil, nil, func() (reflect.Type, error) {
+			reflectType := attrs.GetReflectType()
+			return reflectType, nil
+		}),
 	}
+
+	ctesting.VerifyCharacterizationTestsAndResults(t, testSuite, true)
 }
 
 func TestStructAttributes_GetReflectType_Mixed(t *testing.T) {
@@ -123,14 +210,14 @@ func TestStructAttributes_GetReflectType_Mixed(t *testing.T) {
 		},
 	}
 
-	reflectType := attrs.GetReflectType()
-	if reflectType == nil {
-		t.Fatal("Expected non-nil reflect type for struct")
+	testSuite := []ctesting.CharacterizationTest[bool]{
+		ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+			reflectType := attrs.GetReflectType()
+			return reflectType != nil && reflectType.Kind() == reflect.Struct, nil
+		}),
 	}
 
-	if reflectType.Kind() != reflect.Struct {
-		t.Errorf("Expected struct kind, got %v", reflectType.Kind())
-	}
+	ctesting.VerifyCharacterizationTestsAndResults(t, testSuite, true)
 }
 
 func TestStructAttributes_UnsettableField(t *testing.T) {
@@ -140,14 +227,18 @@ func TestStructAttributes_UnsettableField(t *testing.T) {
 		},
 	}
 
-	result := attrs.GetRandomValue()
-	if result == nil {
-		t.Fatal("Expected non-nil struct")
+	testSuite := []ctesting.CharacterizationTest[bool]{
+		ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+			result := attrs.GetRandomValue()
+			if result == nil {
+				return false, nil
+			}
+			structValue := reflect.ValueOf(result)
+			return structValue.Kind() == reflect.Struct, nil
+		}),
 	}
-	structValue := reflect.ValueOf(result)
-	if structValue.Kind() != reflect.Struct {
-		t.Errorf("Expected struct, got %v", structValue.Kind())
-	}
+
+	ctesting.VerifyCharacterizationTestsAndResults(t, testSuite, true)
 }
 
 func TestStructAttributes_FieldConversion(t *testing.T) {
@@ -158,18 +249,22 @@ func TestStructAttributes_FieldConversion(t *testing.T) {
 		},
 	}
 
-	result := attrs.GetRandomValue()
-	if result == nil {
-		t.Fatal("Expected non-nil struct")
+	testSuite := []ctesting.CharacterizationTest[bool]{
+		ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+			result := attrs.GetRandomValue()
+			if result == nil {
+				return false, nil
+			}
+
+			structValue := reflect.ValueOf(result)
+			field1 := structValue.FieldByName("Field1")
+			field2 := structValue.FieldByName("Field2")
+
+			return field1.IsValid() && field2.IsValid(), nil
+		}),
 	}
 
-	structValue := reflect.ValueOf(result)
-	field1 := structValue.FieldByName("Field1")
-	field2 := structValue.FieldByName("Field2")
-
-	if !field1.IsValid() || !field2.IsValid() {
-		t.Error("Expected valid fields")
-	}
+	ctesting.VerifyCharacterizationTestsAndResults(t, testSuite, true)
 }
 
 func TestStructAttributes_NonConvertibleField(t *testing.T) {
@@ -179,15 +274,19 @@ func TestStructAttributes_NonConvertibleField(t *testing.T) {
 		},
 	}
 
-	result := attrs.GetRandomValue()
-	if result == nil {
-		t.Fatal("Expected non-nil struct")
+	testSuite := []ctesting.CharacterizationTest[bool]{
+		ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+			result := attrs.GetRandomValue()
+			if result == nil {
+				return false, nil
+			}
+
+			structValue := reflect.ValueOf(result)
+			return structValue.Kind() == reflect.Struct, nil
+		}),
 	}
 
-	structValue := reflect.ValueOf(result)
-	if structValue.Kind() != reflect.Struct {
-		t.Errorf("Expected struct, got %v", structValue.Kind())
-	}
+	ctesting.VerifyCharacterizationTestsAndResults(t, testSuite, true)
 }
 
 func TestStructAttributes_GetReflectTypeNilStruct(t *testing.T) {
@@ -195,10 +294,14 @@ func TestStructAttributes_GetReflectTypeNilStruct(t *testing.T) {
 		FieldAttrs: nil,
 	}
 
-	reflectType := attrs.GetReflectType()
-	if reflectType != nil {
-		t.Fatal("Expected nil reflect type for nil struct")
+	testSuite := []ctesting.CharacterizationTest[reflect.Type]{
+		ctesting.NewCharacterizationTest(nil, nil, func() (reflect.Type, error) {
+			reflectType := attrs.GetReflectType()
+			return reflectType, nil
+		}),
 	}
+
+	ctesting.VerifyCharacterizationTestsAndResults(t, testSuite, true)
 }
 
 func TestStructAttributes_SetFieldValueConversion(t *testing.T) {

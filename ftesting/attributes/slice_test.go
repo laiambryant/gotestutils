@@ -8,136 +8,6 @@ import (
 	p "github.com/laiambryant/gotestutils/pbtesting/properties/predicates"
 )
 
-func TestSliceAttributes_MinLenNegative(t *testing.T) {
-	attr := SliceAttributes{MinLen: -5, MaxLen: 10, ElementAttrs: IntegerAttributesImpl[int]{}}
-	result := attr.GetRandomValue()
-	if result == nil {
-		t.Error("Expected slice result, got nil")
-	}
-}
-
-func TestSliceAttributes_MaxLenZero(t *testing.T) {
-	attr := SliceAttributes{MinLen: 0, MaxLen: 0, ElementAttrs: IntegerAttributesImpl[int]{}}
-	result := attr.GetRandomValue()
-	if result == nil {
-		t.Error("Expected slice result, got nil")
-	}
-}
-
-func TestSliceAttributes_MinGreaterThanMax(t *testing.T) {
-	attr := SliceAttributes{MinLen: 10, MaxLen: 5, ElementAttrs: IntegerAttributesImpl[int]{}}
-	result := attr.GetRandomValue()
-	if result == nil {
-		t.Error("Expected slice result, got nil")
-	}
-}
-
-func TestSliceAttributes_NilElementType(t *testing.T) {
-	attr := SliceAttributes{MinLen: 1, MaxLen: 5, ElementAttrs: "not an attribute"}
-	result := attr.GetRandomValue()
-	if result != nil {
-		t.Errorf("Expected nil for invalid element type, got %v", result)
-	}
-}
-
-func TestSliceAttributes_NilElementValue(t *testing.T) {
-	attrs := SliceAttributes{
-		MinLen:       2,
-		MaxLen:       3,
-		ElementAttrs: nilReturningAttribute{},
-	}
-
-	result := attrs.GetRandomValue()
-	if result == nil {
-		t.Fatal("Expected non-nil slice")
-	}
-
-	sliceValue := reflect.ValueOf(result)
-	if sliceValue.Kind() != reflect.Slice {
-		t.Fatalf("Expected slice, got %v", sliceValue.Kind())
-	}
-
-	for i := 0; i < sliceValue.Len(); i++ {
-		elem := sliceValue.Index(i)
-		if elem.Int() != 0 {
-			t.Errorf("Expected zero value at index %d, got %v", i, elem.Interface())
-		}
-	}
-}
-
-func TestSliceAttributes_DefaultMaxLen(t *testing.T) {
-	attrs := SliceAttributes{
-		MinLen:       0,
-		MaxLen:       0,
-		ElementAttrs: IntegerAttributesImpl[int]{Max: 100},
-	}
-
-	result := attrs.GetRandomValue()
-	if result == nil {
-		t.Fatal("Expected non-nil slice")
-	}
-
-	sliceValue := reflect.ValueOf(result)
-	if sliceValue.Len() > 5 {
-		t.Errorf("Expected max length 5 (default), got %d", sliceValue.Len())
-	}
-}
-
-func TestSliceAttributes_GetReflectType_WithReflectType(t *testing.T) {
-	attrs := SliceAttributes{
-		MinLen:       1,
-		MaxLen:       5,
-		ElementAttrs: reflect.TypeOf(int(0)),
-	}
-
-	reflectType := attrs.GetReflectType()
-	if reflectType == nil {
-		t.Fatal("Expected non-nil reflect type for slice")
-	}
-
-	if reflectType.Kind() != reflect.Slice {
-		t.Errorf("Expected slice kind, got %v", reflectType.Kind())
-	}
-
-	if reflectType.Elem() != reflect.TypeOf(int(0)) {
-		t.Errorf("Expected int element type, got %v", reflectType.Elem())
-	}
-}
-
-func TestSliceAttributes_GetReflectType_WithNilElementType(t *testing.T) {
-	attrs := SliceAttributes{
-		MinLen:       1,
-		MaxLen:       5,
-		ElementAttrs: nil,
-	}
-
-	reflectType := attrs.GetReflectType()
-	if reflectType != nil {
-		t.Errorf("Expected nil reflect type for slice with nil element attrs, got %v", reflectType)
-	}
-}
-
-func TestSliceAttributes_GetReflectType_WithAttributesElement(t *testing.T) {
-	attrs := SliceAttributes{
-		MinLen:       1,
-		MaxLen:       5,
-		ElementAttrs: IntegerAttributesImpl[int]{},
-	}
-
-	reflectType := attrs.GetReflectType()
-	if reflectType == nil {
-		t.Fatal("Expected non-nil reflect type for slice when ElementAttrs implements Attributes")
-	}
-	if reflectType.Kind() != reflect.Slice {
-		t.Fatalf("Expected slice kind, got %v", reflectType.Kind())
-	}
-	if reflectType.Elem() != reflect.TypeOf(int(0)) {
-		t.Errorf("Expected int element type, got %v", reflectType.Elem())
-	}
-}
-
-// Ensure that when an ElementAttrs implementation returns nil from GetRandomValue,
-// the slice filler writes the zero value for that element type (uses reflect.Zero).
 func TestSliceAttributes_FillUsesZeroWhenRandomNil(t *testing.T) {
 	attrs := SliceAttributes{
 		MinLen:       3,
@@ -275,6 +145,92 @@ func TestSliceAttributes(t *testing.T) {
 			}
 		}
 		return true, nil
+	}))
+
+	// Additional tests from individual test functions
+	// TestSliceAttributes_MinLenNegative
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attr := SliceAttributes{MinLen: -5, MaxLen: 10, ElementAttrs: IntegerAttributesImpl[int]{}}
+		result := attr.GetRandomValue()
+		return result != nil, nil
+	}))
+
+	// TestSliceAttributes_MaxLenZero
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attr := SliceAttributes{MinLen: 0, MaxLen: 0, ElementAttrs: IntegerAttributesImpl[int]{}}
+		result := attr.GetRandomValue()
+		return result != nil, nil
+	}))
+
+	// TestSliceAttributes_MinGreaterThanMax
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attr := SliceAttributes{MinLen: 10, MaxLen: 5, ElementAttrs: IntegerAttributesImpl[int]{}}
+		result := attr.GetRandomValue()
+		return result != nil, nil
+	}))
+
+	// TestSliceAttributes_NilElementType (converted to bool test)
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attr := SliceAttributes{MinLen: 1, MaxLen: 5, ElementAttrs: "not an attribute"}
+		result := attr.GetRandomValue()
+		return result == nil, nil
+	}))
+
+	// TestSliceAttributes_DefaultMaxLen
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attrs := SliceAttributes{
+			MinLen:       0,
+			MaxLen:       0,
+			ElementAttrs: IntegerAttributesImpl[int]{Max: 100},
+		}
+		result := attrs.GetRandomValue()
+		if result == nil {
+			return false, nil
+		}
+		sliceValue := reflect.ValueOf(result)
+		return sliceValue.Len() <= 5, nil
+	}))
+
+	// TestSliceAttributes_GetReflectType_WithReflectType
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attrs := SliceAttributes{
+			MinLen:       1,
+			MaxLen:       5,
+			ElementAttrs: reflect.TypeOf(int(0)),
+		}
+		reflectType := attrs.GetReflectType()
+		if reflectType == nil {
+			return false, nil
+		}
+		return reflectType.Kind() == reflect.Slice && reflectType.Elem() == reflect.TypeOf(int(0)), nil
+	}))
+
+	// TestSliceAttributes_GetReflectType_WithNilElementType (converted to bool test)
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attrs := SliceAttributes{
+			MinLen:       1,
+			MaxLen:       5,
+			ElementAttrs: nil,
+		}
+		reflectType := attrs.GetReflectType()
+		return reflectType == nil, nil
+	}))
+
+	// TestSliceAttributes_GetReflectType_WithAttributesElement
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attrs := SliceAttributes{
+			MinLen:       1,
+			MaxLen:       5,
+			ElementAttrs: IntegerAttributesImpl[int]{},
+		}
+		reflectType := attrs.GetReflectType()
+		if reflectType == nil {
+			return false, nil
+		}
+		if reflectType.Kind() != reflect.Slice {
+			return false, nil
+		}
+		return reflectType.Elem() == reflect.TypeOf(int(0)), nil
 	}))
 
 	results, _ := ctesting.VerifyCharacterizationTestsAndResults(t, suite, true)

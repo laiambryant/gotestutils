@@ -3,13 +3,103 @@ package attributes
 import (
 	"reflect"
 	"testing"
+
+	"github.com/laiambryant/gotestutils/ctesting"
 )
 
-func TestMapAttributes_MinSizeNegative(t *testing.T) {
-	attr := MapAttributes{MinSize: -5, MaxSize: 10, KeyAttrs: StringAttributes{}, ValueAttrs: IntegerAttributesImpl[int]{}}
-	result := attr.GetRandomValue()
-	if result == nil {
-		t.Error("Expected map result, got nil")
+func TestMapAttributes(t *testing.T) {
+	var suite []ctesting.CharacterizationTest[bool]
+
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attr := MapAttributes{MinSize: 1, MaxSize: 5, KeyAttrs: StringAttributes{}, ValueAttrs: IntegerAttributesImpl[int]{}}
+		got := attr.GetAttributes()
+		expected := MapAttributes{MinSize: 1, MaxSize: 5, KeyAttrs: StringAttributes{}, ValueAttrs: IntegerAttributesImpl[int]{}}
+		return reflect.DeepEqual(got, expected), nil
+	}))
+
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attr := MapAttributes{}
+		got := attr.GetDefaultImplementation()
+		return got != nil && reflect.TypeOf(got) == reflect.TypeOf(attr), nil
+	}))
+
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attr := MapAttributes{MinSize: 1, MaxSize: 3, KeyAttrs: StringAttributes{}, ValueAttrs: IntegerAttributesImpl[int]{}}
+		got := attr.GetRandomValue()
+		return got != nil, nil
+	}))
+
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attr := MapAttributes{MinSize: -5, MaxSize: 10, KeyAttrs: StringAttributes{}, ValueAttrs: IntegerAttributesImpl[int]{}}
+		result := attr.GetRandomValue()
+		return result != nil, nil
+	}))
+
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attr := MapAttributes{MinSize: 0, MaxSize: 0, KeyAttrs: StringAttributes{}, ValueAttrs: IntegerAttributesImpl[int]{}}
+		result := attr.GetRandomValue()
+		return result != nil, nil
+	}))
+
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attr := MapAttributes{MinSize: 10, MaxSize: 5, KeyAttrs: StringAttributes{}, ValueAttrs: IntegerAttributesImpl[int]{}}
+		result := attr.GetRandomValue()
+		return result != nil, nil
+	}))
+
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attr := MapAttributes{MinSize: 1, MaxSize: 5, KeyAttrs: "not an attribute", ValueAttrs: IntegerAttributesImpl[int]{}}
+		result := attr.GetRandomValue()
+		return result == nil, nil
+	}))
+
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attr := MapAttributes{MinSize: 1, MaxSize: 5, KeyAttrs: StringAttributes{}, ValueAttrs: "not an attribute"}
+		result := attr.GetRandomValue()
+		return result == nil, nil
+	}))
+
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attrs := MapAttributes{
+			MinSize:    1,
+			MaxSize:    5,
+			KeyAttrs:   reflect.TypeOf(""),
+			ValueAttrs: reflect.TypeOf(0),
+		}
+		reflectType := attrs.GetReflectType()
+		if reflectType == nil || reflectType.Kind() != reflect.Map {
+			return false, nil
+		}
+		return reflectType.Key() == reflect.TypeOf("") && reflectType.Elem() == reflect.TypeOf(0), nil
+	}))
+
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attrs := MapAttributes{
+			MinSize:    1,
+			MaxSize:    5,
+			KeyAttrs:   nil,
+			ValueAttrs: IntegerAttributesImpl[int]{},
+		}
+		reflectType := attrs.GetReflectType()
+		return reflectType == nil, nil
+	}))
+
+	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
+		attrs := MapAttributes{
+			MinSize:    1,
+			MaxSize:    5,
+			KeyAttrs:   StringAttributes{},
+			ValueAttrs: nil,
+		}
+		reflectType := attrs.GetReflectType()
+		return reflectType == nil, nil
+	}))
+
+	results, _ := ctesting.VerifyCharacterizationTestsAndResults(t, suite, true)
+	for i, passed := range results {
+		if !passed {
+			t.Fatalf("MapAttributes test %d failed", i+1)
+		}
 	}
 }
 
