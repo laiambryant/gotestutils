@@ -16,66 +16,55 @@ func TestUnsignedIntegerAttributes(t *testing.T) {
 		expected := UnsignedIntegerAttributesImpl[uint64]{AllowNegative: false, AllowZero: true, Max: 100, Min: 0}
 		return reflect.DeepEqual(got, expected), nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := UnsignedIntegerAttributesImpl[uint64]{}
 		got := attr.GetReflectType()
 		expected := reflect.TypeOf(uint64(0))
 		return got == expected, nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := UnsignedIntegerAttributesImpl[uint]{Signed: true}
 		reflectType := attr.GetReflectType()
 		expected := reflect.TypeOf(int64(0))
 		return reflectType == expected, nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := UnsignedIntegerAttributesImpl[uint]{AllowNegative: true}
 		reflectType := attr.GetReflectType()
 		expected := reflect.TypeOf(int64(0))
 		return reflectType == expected, nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := UnsignedIntegerAttributesImpl[uint]{Signed: false, AllowNegative: false}
 		reflectType := attr.GetReflectType()
 		expected := reflect.TypeOf(uint64(0))
 		return reflectType == expected, nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := UnsignedIntegerAttributesImpl[uint64]{}
 		got := attr.GetDefaultImplementation()
 		return got != nil && reflect.TypeOf(got) == reflect.TypeOf(attr), nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := UnsignedIntegerAttributesImpl[uint64]{Min: 0, Max: 100}
 		got := attr.GetRandomValue()
 		return got != nil, nil
 	}))
-
-	// Edge cases
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := UnsignedIntegerAttributesImpl[uint]{Max: 0, Min: 0}
 		result := attr.GetRandomValue()
 		return result == uint(0), nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := UnsignedIntegerAttributesImpl[uint]{Max: 5, Min: 10}
 		result := attr.GetRandomValue()
 		return result == uint(0), nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := UnsignedIntegerAttributesImpl[uint]{Max: 10, Min: 10}
 		result := attr.GetRandomValue()
 		return result == uint(0), nil
 	}))
-
 	results, _ := ctesting.VerifyCharacterizationTestsAndResults(t, suite, true)
 	for i, passed := range results {
 		if !passed {

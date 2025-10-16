@@ -10,59 +10,43 @@ import (
 func TestIntegerAttributes(t *testing.T) {
 	var suite []ctesting.CharacterizationTest[bool]
 
-	// GetAttributes tests
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := IntegerAttributesImpl[int64]{AllowNegative: true, AllowZero: true, Max: 10, Min: -5}
 		got := attr.GetAttributes()
 		expected := IntegerAttributesImpl[int64]{AllowNegative: true, AllowZero: true, Max: 10, Min: -5}
 		return reflect.DeepEqual(got, expected), nil
 	}))
-
-	// GetReflectType tests
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := IntegerAttributesImpl[int64]{}
 		got := attr.GetReflectType()
 		expected := reflect.TypeOf(int64(0))
 		return got == expected, nil
 	}))
-
-	// GetDefaultImplementation tests
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := IntegerAttributesImpl[int64]{}
 		got := attr.GetDefaultImplementation()
 		return got != nil && reflect.TypeOf(got) == reflect.TypeOf(attr), nil
 	}))
-
-	// GetRandomValue tests - basic functionality
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := IntegerAttributesImpl[int64]{Min: -10, Max: 10}
 		got := attr.GetRandomValue()
 		return got != nil, nil
 	}))
-
-	// Edge case: Invalid range (Max < Min)
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := IntegerAttributesImpl[int]{Max: 0, Min: -10}
 		result := attr.GetRandomValue()
 		return result == 0, nil
 	}))
-
-	// Edge case: Max less than Min
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := IntegerAttributesImpl[int]{Max: 5, Min: 10}
 		result := attr.GetRandomValue()
 		return result == 0, nil
 	}))
-
-	// Edge case: Min greater than Max exact test
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := IntegerAttributesImpl[int]{Max: 5, Min: 10, AllowNegative: true, AllowZero: true}
 		result := attr.GetRandomValue()
 		return result == 0, nil
 	}))
-
-	// Additional tests from individual test functions
-	// TestGetAttributeGivenType_ZeroValueAttribute
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attributes := FTAttributes{
 			IntegerAttr: IntegerAttributesImpl[int]{},
@@ -74,8 +58,6 @@ func TestIntegerAttributes(t *testing.T) {
 		}
 		return result != nil && reflect.DeepEqual(result, defaultImpl), nil
 	}))
-
-	// TestGetAttributeGivenType_NonZeroValueAttribute
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		customAttr := IntegerAttributesImpl[int]{
 			AllowNegative: true,

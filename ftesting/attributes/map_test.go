@@ -16,49 +16,41 @@ func TestMapAttributes(t *testing.T) {
 		expected := MapAttributes{MinSize: 1, MaxSize: 5, KeyAttrs: StringAttributes{}, ValueAttrs: IntegerAttributesImpl[int]{}}
 		return reflect.DeepEqual(got, expected), nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := MapAttributes{}
 		got := attr.GetDefaultImplementation()
 		return got != nil && reflect.TypeOf(got) == reflect.TypeOf(attr), nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := MapAttributes{MinSize: 1, MaxSize: 3, KeyAttrs: StringAttributes{}, ValueAttrs: IntegerAttributesImpl[int]{}}
 		got := attr.GetRandomValue()
 		return got != nil, nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := MapAttributes{MinSize: -5, MaxSize: 10, KeyAttrs: StringAttributes{}, ValueAttrs: IntegerAttributesImpl[int]{}}
 		result := attr.GetRandomValue()
 		return result != nil, nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := MapAttributes{MinSize: 0, MaxSize: 0, KeyAttrs: StringAttributes{}, ValueAttrs: IntegerAttributesImpl[int]{}}
 		result := attr.GetRandomValue()
 		return result != nil, nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := MapAttributes{MinSize: 10, MaxSize: 5, KeyAttrs: StringAttributes{}, ValueAttrs: IntegerAttributesImpl[int]{}}
 		result := attr.GetRandomValue()
 		return result != nil, nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := MapAttributes{MinSize: 1, MaxSize: 5, KeyAttrs: "not an attribute", ValueAttrs: IntegerAttributesImpl[int]{}}
 		result := attr.GetRandomValue()
 		return result == nil, nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attr := MapAttributes{MinSize: 1, MaxSize: 5, KeyAttrs: StringAttributes{}, ValueAttrs: "not an attribute"}
 		result := attr.GetRandomValue()
 		return result == nil, nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attrs := MapAttributes{
 			MinSize:    1,
@@ -72,7 +64,6 @@ func TestMapAttributes(t *testing.T) {
 		}
 		return reflectType.Key() == reflect.TypeOf("") && reflectType.Elem() == reflect.TypeOf(0), nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attrs := MapAttributes{
 			MinSize:    1,
@@ -83,7 +74,6 @@ func TestMapAttributes(t *testing.T) {
 		reflectType := attrs.GetReflectType()
 		return reflectType == nil, nil
 	}))
-
 	suite = append(suite, ctesting.NewCharacterizationTest(true, nil, func() (bool, error) {
 		attrs := MapAttributes{
 			MinSize:    1,
@@ -94,7 +84,6 @@ func TestMapAttributes(t *testing.T) {
 		reflectType := attrs.GetReflectType()
 		return reflectType == nil, nil
 	}))
-
 	results, _ := ctesting.VerifyCharacterizationTestsAndResults(t, suite, true)
 	for i, passed := range results {
 		if !passed {
@@ -142,17 +131,14 @@ func TestMapAttributes_NilKeyValue(t *testing.T) {
 		KeyAttrs:   nilReturningAttribute{},
 		ValueAttrs: nilReturningAttribute{},
 	}
-
 	result := attrs.GetRandomValue()
 	if result == nil {
 		t.Fatal("Expected non-nil map")
 	}
-
 	mapValue := reflect.ValueOf(result)
 	if mapValue.Kind() != reflect.Map {
 		t.Fatalf("Expected map, got %v", mapValue.Kind())
 	}
-
 	if mapValue.Len() < 1 {
 		t.Errorf("Expected at least 1 entry, got %d", mapValue.Len())
 	}
@@ -165,12 +151,10 @@ func TestMapAttributes_EqualMinMaxSize(t *testing.T) {
 		KeyAttrs:   StringAttributes{MinLen: 5, MaxLen: 10},
 		ValueAttrs: IntegerAttributesImpl[int]{Max: 100},
 	}
-
 	result := attrs.GetRandomValue()
 	if result == nil {
 		t.Fatal("Expected non-nil map")
 	}
-
 	mapValue := reflect.ValueOf(result)
 	if mapValue.Len() < 3 || mapValue.Len() > 5 {
 		t.Errorf("Expected map size around 5, got %d", mapValue.Len())
@@ -184,12 +168,10 @@ func TestMapAttributes_DefaultSizes(t *testing.T) {
 		KeyAttrs:   IntegerAttributesImpl[int]{Max: 100},
 		ValueAttrs: StringAttributes{MaxLen: 10},
 	}
-
 	result := attrs.GetRandomValue()
 	if result == nil {
 		t.Fatal("Expected non-nil map")
 	}
-
 	mapValue := reflect.ValueOf(result)
 	if mapValue.Len() > 5 {
 		t.Errorf("Expected max size 5 (default), got %d", mapValue.Len())
@@ -264,15 +246,12 @@ func TestMapAttributes_GetReflectType_WithReflectTypes(t *testing.T) {
 	if reflectType == nil {
 		t.Fatal("Expected non-nil reflect type for map")
 	}
-
 	if reflectType.Kind() != reflect.Map {
 		t.Errorf("Expected map kind, got %v", reflectType.Kind())
 	}
-
 	if reflectType.Key() != reflect.TypeOf("") {
 		t.Errorf("Expected string key type, got %v", reflectType.Key())
 	}
-
 	if reflectType.Elem() != reflect.TypeOf(0) {
 		t.Errorf("Expected int value type, got %v", reflectType.Elem())
 	}
