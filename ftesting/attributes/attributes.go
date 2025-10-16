@@ -1,3 +1,108 @@
+// Package attributes provides a type-safe, configurable system for generating random
+// values for fuzz testing in Go.
+//
+// The attributes package is the core of the ftesting framework's input generation
+// capabilities. It defines interfaces and implementations for generating random values
+// of any Go type with fine-grained control over ranges, constraints, and special values.
+//
+// Architecture:
+//
+// The package uses a generic, reflection-based design:
+//   - Attributes interface: The contract all value generators must implement
+//   - FTAttributes: Central configuration mapping types to their generators
+//   - Type-specific implementations: Generic structs like IntegerAttributesImpl[T]
+//   - Type constraints: Union types (Integers, Floats, etc.) for type safety
+//
+// Supported Types:
+//   - Signed integers: int, int8, int16, int32, int64
+//   - Unsigned integers: uint, uint8, uint16, uint32, uint64
+//   - Floating-point: float32, float64
+//   - Complex numbers: complex64, complex128
+//   - Strings with customizable character sets and patterns
+//   - Slices with element constraints
+//   - Arrays with fixed sizes
+//   - Maps with key/value constraints
+//   - Pointers including multi-level pointers and nil support
+//   - Structs with per-field attribute configuration
+//   - Booleans
+//
+// Key Concepts:
+//
+//  1. Attributes: Configuration objects that define how to generate random values.
+//     Each attribute type has fields controlling ranges, special values, and constraints.
+//
+//  2. Type Parameters: Generic implementations use Go 1.18+ type parameters with
+//     union constraints (e.g., IntegerAttributesImpl[T Integers]) to ensure type safety
+//     across different bit sizes and numeric types.
+//
+// 3. Reflection: The package heavily uses reflection to:
+//
+//   - Map runtime types to attribute implementations
+//
+//   - Create values of arbitrary types dynamically
+//
+//   - Convert between types while maintaining type safety
+//
+//     4. Default Implementations: Every attribute type provides sensible defaults via
+//     GetDefaultImplementation(), enabling zero-configuration usage.
+//
+// Basic Usage:
+//
+//	// Create default attributes for all types
+//	attrs := NewFTAttributes()
+//
+//	// Get attributes for a specific type
+//	intType := reflect.TypeOf(int(0))
+//	intAttr, err := attrs.GetAttributeGivenType(intType)
+//
+//	// Generate a random value
+//	randomInt := intAttr.GetRandomValue()
+//
+// Custom Configuration:
+//
+//	// Customize integer generation
+//	attrs := NewFTAttributes()
+//	attrs.IntegerAttr = IntegerAttributesImpl[int]{
+//	    Min: 1,
+//	    Max: 100,
+//	    AllowZero: false,
+//	    AllowNegative: false,
+//	}
+//
+//	// Customize string generation
+//	attrs.StringAttr = StringAttributes{
+//	    MinLen: 8,
+//	    MaxLen: 16,
+//	    AllowedRunes: []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"),
+//	}
+//
+// Advanced Usage with Nested Types:
+//
+//	// Configure slice of custom structs
+//	attrs.SliceAttr = SliceAttributes{
+//	    MinLen: 5,
+//	    MaxLen: 10,
+//	    ElementAttrs: StructAttributes{
+//	        FieldAttrs: map[string]any{
+//	            "ID": IntegerAttributesImpl[int]{Min: 1, Max: 1000},
+//	            "Name": StringAttributes{MinLen: 3, MaxLen: 20},
+//	        },
+//	    },
+//	}
+//
+// Design Patterns:
+//
+//  1. Generic Attribute Implementations: Use type parameters to implement a single
+//     struct that works for all variants of a type category (e.g., all signed integers).
+//
+//  2. Helper Methods: Private helper methods break down complex generation logic into
+//     testable, reusable pieces (e.g., getBounds(), generateRandomValue(), convertToType()).
+//
+//  3. Zero Value Fallbacks: Methods return appropriate zero values when configuration
+//     is invalid rather than panicking, ensuring robustness.
+//
+//  4. Type Safety via Reflection: Despite heavy reflection use, the package maintains
+//     type safety by validating types and using type conversion rather than unsafe operations.
 package attributes
 
 import (
@@ -8,6 +113,31 @@ import (
 	p "github.com/laiambryant/gotestutils/pbtesting/properties/predicates"
 )
 
+// FTAttributes is the central configuration struct for fuzz testing input generation.
+// It contains attribute configurations for all supported Go types, allowing fine-grained
+// control over how random values are generated for each type category.
+//
+// Each field represents a category of types and contains configuration for generating
+// random values of that category. Default configurations are provided by NewFTAttributes.
+//
+// Fields:
+//   - IntegerAttr: Configuration for signed integer types (int, int8, int16, int32, int64)
+//   - UIntegerAttr: Configuration for unsigned integer types (uint, uint8, uint16, uint32, uint64)
+//   - FloatAttr: Configuration for floating-point types (float32, float64)
+//   - ComplexAttr: Configuration for complex number types (complex64, complex128)
+//   - StringAttr: Configuration for string generation
+//   - SliceAttr: Configuration for slice generation
+//   - BoolAttr: Configuration for boolean generation
+//   - MapAttr: Configuration for map generation
+//   - PointerAttr: Configuration for pointer generation (including multi-level pointers)
+//   - StructAttr: Configuration for struct generation
+//   - ArrayAttr: Configuration for array generation
+//
+// Example usage:
+//
+//	attrs := NewFTAttributes()
+//	attrs.IntegerAttr = IntegerAttributesImpl[int]{Min: 0, Max: 100, AllowZero: false}
+//	attrs.StringAttr = StringAttributes{MinLen: 5, MaxLen: 20}
 type FTAttributes struct {
 	IntegerAttr  IntegerAttributes
 	UIntegerAttr UnsignedIntegerAttributes
@@ -22,6 +152,31 @@ type FTAttributes struct {
 	ArrayAttr    ArrayAttributes
 }
 
+// NewFTAttributes creates and returns an FTAttributes instance with sensible default
+// configurations for all supported types. These defaults are designed to work well
+// for general-purpose fuzz testing.
+//
+// Default configurations:
+//   - Integers: Range [-100, 100], allow negative and zero
+//   - Unsigned integers: Range [0, 100], allow zero
+//   - Floats: Range [-100.0, 100.0], finite only, non-zero
+//   - Complex: Real and imaginary parts in range [-10.0, 10.0]
+//   - Strings: Length [1, 10] characters
+//   - Slices: Length [1, 5] elements, with integer elements
+//   - Bools: Random true/false
+//   - Maps: Size [1, 5] entries, string keys and integer values
+//   - Pointers: Allow nil, depth 1, integer inner type
+//   - Structs: Two fields (Field1: int, Field2: float32)
+//   - Arrays: Length 5, integer elements
+//
+// Returns an FTAttributes instance ready for use with FTesting.
+//
+// Example usage:
+//
+//	attrs := NewFTAttributes()
+//	// Optionally override specific attributes:
+//	attrs.IntegerAttr = IntegerAttributesImpl[int]{Min: 1, Max: 1000}
+//	ft.WithAttributes(attrs)
 func NewFTAttributes() FTAttributes {
 	return FTAttributes{
 		IntegerAttr:  IntegerAttributesImpl[int]{AllowNegative: true, AllowZero: true, Max: 100, Min: -100},
@@ -38,6 +193,33 @@ func NewFTAttributes() FTAttributes {
 	}
 }
 
+// GetAttributeGivenType returns the appropriate Attributes implementation for the given
+// reflect.Type. This method is the core type-to-attribute mapping mechanism used by
+// the fuzz testing framework to determine how to generate random values for function parameters.
+//
+// The method performs the following:
+// 1. Maps the type's Kind to the corresponding attribute configuration
+// 2. Checks if the attribute has custom configuration or needs defaults
+// 3. Returns a fully configured Attributes instance ready for value generation
+//
+// Parameters:
+//   - t: The reflect.Type to get attributes for
+//
+// Returns:
+//   - retA: An Attributes implementation configured for the given type
+//   - err: An error if the type is nil or unsupported
+//
+// Errors returned:
+//   - NilTypeError: When t is nil
+//   - UnsupportedAttributeTypeError: When the type's Kind is not supported
+//
+// Example usage:
+//
+//	intType := reflect.TypeOf(int(0))
+//	attrs := NewFTAttributes()
+//	intAttr, err := attrs.GetAttributeGivenType(intType)
+//	// intAttr can now generate random integers
+//	randomInt := intAttr.GetRandomValue()
 func (mt FTAttributes) GetAttributeGivenType(t reflect.Type) (retA Attributes, err error) {
 	if t == nil {
 		return nil, NilTypeError{}
@@ -69,6 +251,17 @@ func (mt FTAttributes) GetAttributeGivenType(t reflect.Type) (retA Attributes, e
 	return
 }
 
+// getDefaultForKind returns a default Attributes implementation for the given reflect.Kind.
+// This is a fallback method used when no custom attribute configuration exists for a type.
+//
+// Parameters:
+//   - kind: The reflect.Kind to get default attributes for
+//
+// Returns:
+//   - Attributes: A default implementation for the given kind
+//   - error: UnsupportedAttributeTypeError if the kind is not supported
+//
+// This method is used internally by GetAttributeGivenType.
 func (mt FTAttributes) getDefaultForKind(kind reflect.Kind) (Attributes, error) {
 	switch kind {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -98,6 +291,31 @@ func (mt FTAttributes) getDefaultForKind(kind reflect.Kind) (Attributes, error) 
 	}
 }
 
+// IntegerAttributesImpl is a generic implementation for generating random signed integer values
+// with configurable constraints. The type parameter T must be one of the signed integer types.
+//
+// Type parameter:
+//   - T: Must satisfy the Integers constraint (int, int8, int16, int32, int64)
+//
+// Fields:
+//   - AllowNegative: If true, negative values can be generated; if false, only positive values
+//   - AllowZero: If true, zero can be generated; if false, zero is excluded
+//   - Max: The maximum value (inclusive) for generated integers
+//   - Min: The minimum value (inclusive) for generated integers
+//
+// The implementation uses reflection and type conversion to ensure generated values
+// match the exact integer type T, even when working with different bit sizes.
+//
+// Example usage:
+//
+//	// Generate random integers from 1 to 100 (no zero or negatives)
+//	attrs := IntegerAttributesImpl[int]{
+//	    AllowNegative: false,
+//	    AllowZero: false,
+//	    Max: 100,
+//	    Min: 1,
+//	}
+//	randomInt := attrs.GetRandomValue() // Returns a random int between 1 and 100
 type IntegerAttributesImpl[T Integers] struct {
 	AllowNegative bool
 	AllowZero     bool
@@ -147,6 +365,31 @@ func (a IntegerAttributesImpl[T]) generateRandomInteger(min, max int64, zero T) 
 	return resultVal.Interface()
 }
 
+// UnsignedIntegerAttributesImpl is a generic implementation for generating random unsigned
+// integer values with configurable constraints. The type parameter T must be one of the
+// unsigned integer types.
+//
+// Type parameter:
+//   - T: Must satisfy the UnsignedIntegers constraint (uint, uint8, uint16, uint32, uint64)
+//
+// Fields:
+//   - Signed: If true, treats the value as signed for generation purposes
+//   - AllowNegative: If true, negative values can be generated (requires Signed to be true)
+//   - AllowZero: If true, zero can be generated; if false, zero is excluded
+//   - Max: The maximum value (inclusive) for generated unsigned integers
+//   - Min: The minimum value (inclusive) for generated unsigned integers
+//
+// Example usage:
+//
+//	// Generate random unsigned integers from 0 to 255
+//	attrs := UnsignedIntegerAttributesImpl[uint8]{
+//	    Signed: false,
+//	    AllowNegative: false,
+//	    AllowZero: true,
+//	    Max: 255,
+//	    Min: 0,
+//	}
+//	randomUInt := attrs.GetRandomValue() // Returns a random uint8 between 0 and 255
 type UnsignedIntegerAttributesImpl[T UnsignedIntegers] struct {
 	Signed        bool
 	AllowNegative bool
@@ -207,6 +450,31 @@ func (a UnsignedIntegerAttributesImpl[T]) generateRandomUnsignedInteger(min, max
 	return resultVal.Interface()
 }
 
+// FloatAttributesImpl is a generic implementation for generating random floating-point
+// values with configurable constraints and special value handling.
+//
+// Type parameter:
+//   - T: Must satisfy the Floats constraint (float32, float64)
+//
+// Fields:
+//   - Min: The minimum value (inclusive) for generated floats
+//   - Max: The maximum value (inclusive) for generated floats
+//   - NonZero: If true, zero is excluded from generated values
+//   - FiniteOnly: If true, only finite values are generated (no Inf or NaN)
+//   - AllowNaN: If true, NaN values can be generated (requires FiniteOnly to be false)
+//   - AllowInf: If true, Infinity values can be generated (requires FiniteOnly to be false)
+//   - Precision: Number of decimal places for rounding (0 means no rounding)
+//
+// Example usage:
+//
+//	// Generate random floats from -1.0 to 1.0, excluding zero
+//	attrs := FloatAttributesImpl[float64]{
+//	    Min: -1.0,
+//	    Max: 1.0,
+//	    NonZero: true,
+//	    FiniteOnly: true,
+//	}
+//	randomFloat := attrs.GetRandomValue() // Returns a random float64 between -1.0 and 1.0
 type FloatAttributesImpl[T Floats] struct {
 	Min        T
 	Max        T
@@ -262,6 +530,34 @@ func (a FloatAttributesImpl[T]) convertToTargetType(result float64, zero T) any 
 	return resultVal.Interface()
 }
 
+// ComplexAttributesImpl is a generic implementation for generating random complex number
+// values with separate control over real and imaginary components.
+//
+// Type parameter:
+//   - T: Must satisfy the Complex constraint (complex64, complex128)
+//
+// Fields:
+//   - RealMin: The minimum value for the real component
+//   - RealMax: The maximum value for the real component
+//   - ImagMin: The minimum value for the imaginary component
+//   - ImagMax: The maximum value for the imaginary component
+//   - MagnitudeMin: Optional constraint on minimum magnitude
+//   - MagnitudeMax: Optional constraint on maximum magnitude
+//   - MaxComplex: Optional maximum complex value
+//   - MinComplex: Optional minimum complex value
+//   - AllowNaN: If true, NaN components can be generated
+//   - AllowInf: If true, Infinity components can be generated
+//
+// Example usage:
+//
+//	// Generate complex numbers with real and imaginary parts in [-5.0, 5.0]
+//	attrs := ComplexAttributesImpl[complex128]{
+//	    RealMin: -5.0,
+//	    RealMax: 5.0,
+//	    ImagMin: -5.0,
+//	    ImagMax: 5.0,
+//	}
+//	randomComplex := attrs.GetRandomValue() // Returns a random complex128
 type ComplexAttributesImpl[T Complex] struct {
 	RealMin      float64
 	RealMax      float64
@@ -326,6 +622,28 @@ func (a ComplexAttributesImpl[T]) createComplexValue(realPart, imagPart float64,
 	return resultVal.Interface()
 }
 
+// StringAttributes configures the generation of random string values with various
+// constraints including length, character sets, and pattern matching.
+//
+// Fields:
+//   - MinLen: Minimum string length (inclusive)
+//   - MaxLen: Maximum string length (inclusive)
+//   - AllowedRunes: Character set to use (defaults to ASCII printable if empty)
+//   - Regex: Regular expression pattern that generated strings should match
+//   - Prefix: String to prepend to all generated strings
+//   - Suffix: String to append to all generated strings
+//   - Contains: Substring that must appear in all generated strings
+//   - UniqueChars: If true, all characters in generated strings must be unique
+//
+// Example usage:
+//
+//	// Generate random alphanumeric strings of length 8-12
+//	attrs := StringAttributes{
+//	    MinLen: 8,
+//	    MaxLen: 12,
+//	    AllowedRunes: []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"),
+//	}
+//	randomString := attrs.GetRandomValue() // Returns a random string like "aBc3Def9Gh"
 type StringAttributes struct {
 	MinLen       int
 	MaxLen       int
@@ -408,6 +726,26 @@ func (a StringAttributes) applyPrefixSuffix(generated string) string {
 	return generated
 }
 
+// SliceAttributes configures the generation of random slice values with control
+// over slice length, element generation, and optional properties like uniqueness and sorting.
+//
+// Fields:
+//   - MinLen: Minimum slice length (inclusive)
+//   - MaxLen: Maximum slice length (inclusive)
+//   - Unique: If true, all slice elements must be unique
+//   - Sorted: If true, generated slices are sorted
+//   - ElementPreds: Predicates that all elements must satisfy
+//   - ElementAttrs: Attributes for generating slice elements (can be Attributes or reflect.Type)
+//
+// Example usage:
+//
+//	// Generate random slices of integers with length 5-10
+//	attrs := SliceAttributes{
+//	    MinLen: 5,
+//	    MaxLen: 10,
+//	    ElementAttrs: IntegerAttributesImpl[int]{Min: 0, Max: 100},
+//	}
+//	randomSlice := attrs.GetRandomValue() // Returns a random []int with 5-10 elements
 type SliceAttributes struct {
 	MinLen       int
 	MaxLen       int
@@ -508,6 +846,25 @@ func (a SliceAttributes) fillSliceWithRandomElements(result reflect.Value, elemT
 	}
 }
 
+// BoolAttributes configures the generation of random boolean values with options
+// to force specific values.
+//
+// Fields:
+//   - ForceTrue: If true, always generate true
+//   - ForceFalse: If true, always generate false
+//
+// If both ForceTrue and ForceFalse are false, values are randomly generated.
+// If both are true, ForceTrue takes precedence.
+//
+// Example usage:
+//
+//	// Generate random booleans with 50/50 distribution
+//	attrs := BoolAttributes{}
+//	randomBool := attrs.GetRandomValue() // Returns true or false randomly
+//
+//	// Always generate true
+//	forcedAttrs := BoolAttributes{ForceTrue: true}
+//	alwaysTrue := forcedAttrs.GetRandomValue() // Always returns true
 type BoolAttributes struct {
 	ForceTrue  bool
 	ForceFalse bool
@@ -543,6 +900,27 @@ func (a BoolAttributes) generateRandomBool() bool {
 	return rand.Intn(2) == 1
 }
 
+// MapAttributes configures the generation of random map values with control over
+// map size, key/value generation, and optional predicate validation.
+//
+// Fields:
+//   - MinSize: Minimum number of map entries (inclusive)
+//   - MaxSize: Maximum number of map entries (inclusive)
+//   - KeyPreds: Predicates that all keys must satisfy
+//   - ValuePreds: Predicates that all values must satisfy
+//   - KeyAttrs: Attributes for generating map keys (can be Attributes or reflect.Type)
+//   - ValueAttrs: Attributes for generating map values (can be Attributes or reflect.Type)
+//
+// Example usage:
+//
+//	// Generate random maps with string keys and integer values
+//	attrs := MapAttributes{
+//	    MinSize: 1,
+//	    MaxSize: 10,
+//	    KeyAttrs: StringAttributes{MinLen: 3, MaxLen: 8},
+//	    ValueAttrs: IntegerAttributesImpl[int]{Min: 0, Max: 100},
+//	}
+//	randomMap := attrs.GetRandomValue() // Returns a random map[string]int
 type MapAttributes struct {
 	MinSize    int
 	MaxSize    int
@@ -665,6 +1043,34 @@ func (a MapAttributes) getRandomValueValue(valueType reflect.Type) reflect.Value
 	return reflect.Zero(valueType)
 }
 
+// PointerAttributes configures the generation of random pointer values including
+// support for nil pointers and multi-level pointer chains (pointer to pointer, etc.).
+//
+// Fields:
+//   - AllowNil: If true, nil pointers can be generated
+//   - Depth: Number of pointer levels (1 = *T, 2 = **T, etc.)
+//   - Inner: Attributes for the pointed-to value (can be Attributes or reflect.Type)
+//
+// The implementation creates proper pointer chains by allocating memory at each level
+// and setting up the chain correctly.
+//
+// Example usage:
+//
+//	// Generate pointers to integers, allowing nil
+//	attrs := PointerAttributes{
+//	    AllowNil: true,
+//	    Depth: 1,
+//	    Inner: IntegerAttributesImpl[int]{Min: 0, Max: 100},
+//	}
+//	randomPtr := attrs.GetRandomValue() // Returns *int (may be nil)
+//
+//	// Generate pointer-to-pointer-to-string
+//	deepAttrs := PointerAttributes{
+//	    AllowNil: false,
+//	    Depth: 2,
+//	    Inner: StringAttributes{MinLen: 5, MaxLen: 10},
+//	}
+//	deepPtr := deepAttrs.GetRandomValue() // Returns **string
 type PointerAttributes struct {
 	AllowNil bool
 	Depth    int
@@ -756,6 +1162,29 @@ func (a PointerAttributes) createPointerChain(innerValue *reflect.Value) any {
 	return currentPtr.Interface()
 }
 
+// StructAttributes configures the generation of random struct values by mapping
+// field names to their respective attribute configurations.
+//
+// Fields:
+//   - FieldAttrs: A map from field name to field attributes (can be Attributes or reflect.Type)
+//
+// The implementation uses reflection to dynamically create struct types at runtime
+// based on the field configurations. Each field is populated with a random value
+// generated by its corresponding attribute.
+//
+// Note: The generated struct type is created dynamically using reflect.StructOf,
+// so it won't have any methods or struct tags beyond what's defined in FieldAttrs.
+//
+// Example usage:
+//
+//	// Generate random structs with ID (int) and Name (string) fields
+//	attrs := StructAttributes{
+//	    FieldAttrs: map[string]any{
+//	        "ID": IntegerAttributesImpl[int]{Min: 1, Max: 1000},
+//	        "Name": StringAttributes{MinLen: 3, MaxLen: 20},
+//	    },
+//	}
+//	randomStruct := attrs.GetRandomValue() // Returns a struct with ID and Name fields
 type StructAttributes struct {
 	FieldAttrs map[string]any
 }
@@ -860,6 +1289,25 @@ func (a StructAttributes) getStructReflectType() (reflect.Type, error) {
 	return structType, nil
 }
 
+// ArrayAttributes configures the generation of random fixed-size array values.
+// Unlike slices, arrays have a fixed length determined at compile time.
+//
+// Fields:
+//   - Length: The fixed length of the array (must be >= 0)
+//   - Sorted: If true, array elements are sorted
+//   - ElementAttrs: Attributes for generating array elements (can be Attributes or reflect.Type)
+//
+// Arrays are similar to slices but have a fixed size that's part of their type.
+// The Length field determines the array type: [5]int vs [10]int are different types.
+//
+// Example usage:
+//
+//	// Generate random [10]int arrays with values 0-100
+//	attrs := ArrayAttributes{
+//	    Length: 10,
+//	    ElementAttrs: IntegerAttributesImpl[int]{Min: 0, Max: 100},
+//	}
+//	randomArray := attrs.GetRandomValue() // Returns [10]int
 type ArrayAttributes struct {
 	Length       int
 	Sorted       bool
