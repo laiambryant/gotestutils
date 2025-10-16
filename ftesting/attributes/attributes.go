@@ -125,9 +125,6 @@ func (a IntegerAttributesImpl[T]) GetRandomValue() any {
 		return zero
 	}
 	min, max := a.getMinMaxAsInt64()
-	if max <= min {
-		return zero
-	}
 	return a.generateRandomInteger(min, max, zero)
 }
 
@@ -820,11 +817,10 @@ func (a StructAttributes) createStructValue(structType reflect.Type) reflect.Val
 func (a StructAttributes) populateStructFields(structValue reflect.Value) {
 	for fieldName, fieldAttr := range a.FieldAttrs {
 		field := structValue.FieldByName(fieldName)
-		if !a.isFieldSettable(field) {
-			continue
+		if a.isFieldSettable(field) {
+			fieldValue := a.generateFieldValue(fieldAttr, field.Type())
+			a.setFieldValue(field, fieldValue)
 		}
-		fieldValue := a.generateFieldValue(fieldAttr, field.Type())
-		a.setFieldValue(field, fieldValue)
 	}
 }
 
