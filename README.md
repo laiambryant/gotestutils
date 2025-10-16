@@ -48,7 +48,7 @@ type CharacterizationTest[t comparable] struct {
 
 Use `NewCharacterizationTest` to create test instances that capture the current behavior of your code. Each test consists of an expected output value, an expected error (or nil if no error is expected), and a function to execute. The test function should match the `TestFunc[t]` signature, returning a value of type `t` and an error. This approach allows you to document and verify the exact behavior of functions, making it easier to detect unintended changes during refactoring or maintenance.
 
-### Execution Methods
+### Characterization Test Execution
 
 #### Basic Test Execution
 
@@ -139,6 +139,166 @@ Complete examples for stress testing:
 - [`examples/memory_stress_test.go`](examples/memory_stress_test.go) - Testing memory-intensive functions with file output for analysis
 - [`examples/stress_error_handling_test.go`](examples/stress_error_handling_test.go) - Error handling in stress tests with detailed iteration information
 
-### Integration with Go Testing
+### Stress Testing Integration
 
 Stress tests integrate seamlessly with Go's testing framework. See [`examples/basic_stress_test.go`](examples/basic_stress_test.go) for examples of integration patterns.
+
+## Property-Based Testing Framework
+
+The `pbtesting` package provides a comprehensive property-based testing framework that validates functions satisfy mathematical properties and logical invariants across randomly generated inputs. Unlike traditional example-based tests that check specific input-output pairs, property-based tests verify that certain properties hold for all inputs within a domain.
+
+### Core Concepts
+
+Property-based testing validates that functions satisfy predicates (properties) across many random inputs. For example, instead of testing that `abs(-5) == 5`, you verify the property "absolute value is always non-negative" for thousands of random inputs.
+
+#### PBTest Structure
+
+The `PBTest` struct is the foundation of property-based testing:
+
+```go
+type PBTest struct {
+    t          *testing.T      // Testing instance for reporting
+    f          any             // Function under test
+    predicates []Predicate     // Properties to validate
+    iterations uint            // Number of test iterations
+    argAttrs   []any          // Custom input generation attributes
+}
+```
+
+#### Creating Property-Based Tests
+
+Use `NewPBTest` to create test instances that validate function properties:
+
+```go
+test := NewPBTest(myFunc).
+    WithIterations(1000).
+    WithPredicates(nonNegative, lessThan100).
+    WithT(t)
+```
+
+### Property Test Execution
+
+#### Run - Basic Execution
+
+`Run()` executes property tests with default random input generation:
+
+```go
+results, err := test.Run()
+if err != nil {
+    t.Fatal(err)
+}
+
+failures := FilterPBTTestOut(results)
+if len(failures) > 0 {
+    t.Errorf("Found %d property violations", len(failures))
+}
+```
+
+#### RunWithAttributes - Constrained Input Generation
+
+`RunWithAttributes()` provides fine-grained control over random input generation by accepting custom attributes. This allows you to constrain the input space to specific ranges, types, or characteristics:
+
+```go
+// Example: Constrain integers to positive range
+attrs := attributes.NewFTAttributes()
+attrs.IntegerAttr = attributes.IntegerAttributesImpl[int]{
+    Min:           1,
+    Max:           100,
+    AllowNegative: false,
+    AllowZero:     false,
+}
+
+results, err := test.RunWithAttributes(attrs)
+```
+
+**Key Features:**
+
+- Control integer ranges (Min, Max, AllowNegative, AllowZero)
+- Constrain float values (Min, Max, FiniteOnly, NonZero)
+- Specify string lengths (MinLen, MaxLen)
+- Configure slice/array sizes and element constraints
+- Customize struct field generation
+
+**Use Cases:**
+
+- Testing functions with domain-specific constraints
+- Avoiding edge cases irrelevant to your use case
+- Focusing tests on particular input ranges
+- Validating behavior within business rule boundaries
+
+### Predicates
+
+Predicates define the properties that function outputs must satisfy. Implement the `Predicate` interface:
+
+```go
+type Predicate interface {
+    Verify(val any) bool
+}
+```
+
+**Common Property Patterns:**
+
+- **Idempotence**: `f(f(x)) == f(x)`
+- **Commutativity**: `f(a, b) == f(b, a)`
+- **Associativity**: `f(f(a, b), c) == f(a, f(b, c))`
+- **Identity**: `f(x, identity) == x`
+- **Inverse**: `f(g(x)) == x`
+
+### Property-Based Testing Examples
+
+Complete examples demonstrating property-based testing:
+
+- [`examples/basic_property_test.go`](examples/basic_property_test.go) - Fundamental property patterns (idempotence, commutativity, inverse operations)
+- [`examples/advanced_property_test.go`](examples/advanced_property_test.go) - Advanced properties with custom attributes, complex types, and error handling
+- [`examples/property_patterns_test.go`](examples/property_patterns_test.go) - Reusable property testing patterns (monotonicity, round-trip, boundary conditions)
+
+### Property Testing Integration
+
+Property-based tests integrate seamlessly with Go's testing framework:
+
+```go
+func TestSquareRootProperty(t *testing.T) {
+    // Property: sqrt(x)² should equal x for non-negative values
+    sqrtProperty := Predicate{
+        Verify: func(val any) bool {
+            result := val.(float64)
+            return result >= 0
+        },
+    }
+
+    attrs := attributes.NewFTAttributes()
+    attrs.FloatAttr = attributes.FloatAttributesImpl[float64]{
+        Min:        0.0,
+        Max:        10000.0,
+        FiniteOnly: true,
+    }
+
+    test := NewPBTest(math.Sqrt).
+        WithIterations(1000).
+        WithPredicates(sqrtProperty).
+        WithT(t)
+
+    results, err := test.RunWithAttributes(attrs)
+    if err != nil {
+        t.Fatal(err)
+    }
+
+    failures := FilterPBTTestOut(results)
+    if len(failures) > 0 {
+        t.Errorf("Found %d violations of sqrt property", len(failures))
+        for i, failure := range failures {
+            if i < 5 { // Show first 5 failures
+                t.Logf("  Failure: %v", failure.Output)
+            }
+        }
+    }
+}
+```
+
+### Benefits of Property-Based Testing
+
+- **Broader Coverage**: Tests thousands of inputs automatically
+- **Edge Case Discovery**: Finds corner cases you didn't think to test
+- **Living Documentation**: Properties document function behavior
+- **Regression Prevention**: Catches behavioral changes across refactoring
+- **Domain Modeling**: Codifies business rules and mathematical properties
