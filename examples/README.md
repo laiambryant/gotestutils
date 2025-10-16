@@ -41,6 +41,40 @@ This folder contains complete, runnable examples for all the functionality demon
   - Nil handling verification
   - Composite type fuzzing (nested maps/slices)
 
+## Property-Based Testing Examples
+
+- [`basic_property_test.go`](basic_property_test.go) - Basic property-based testing patterns
+  - Absolute value properties (non-negativity)
+  - Square function properties
+  - Multiple predicate validation
+  - Idempotence testing (f(f(x)) = f(x))
+  - Range constraints and clamping
+  - Inverse relationships
+  - String length properties
+  - Commutativity and associativity
+
+- [`advanced_property_test.go`](advanced_property_test.go) - Advanced property testing with custom attributes
+  - String transformation properties (uppercase, trim)
+  - Floating-point properties
+  - Slice operations with length invariants
+  - Map filtering properties
+  - Custom struct properties
+  - Multi-argument property testing
+  - Complex predicate chains
+  - Error handling with properties
+
+- [`property_patterns_test.go`](property_patterns_test.go) - Common property testing patterns
+  - Idempotence pattern (sorting, normalization)
+  - Commutativity pattern (addition, set operations)
+  - Associativity pattern (string concatenation)
+  - Identity element pattern (zero, empty string)
+  - Invariant pattern (length preservation)
+  - Monotonicity pattern (ordering preservation)
+  - Round-trip pattern (encode/decode)
+  - Comparison pattern (two implementations)
+  - Boundary pattern (edge cases)
+  - Induction pattern (recursive properties)
+
 ## Stress Testing Examples
 
 - [`basic_stress_test.go`](basic_stress_test.go) - Basic stress testing patterns
@@ -76,6 +110,12 @@ To run only fuzz tests:
 go test -v -run Fuzz
 ```
 
+To run only property-based tests:
+
+```bash
+go test -v -run Property
+```
+
 To run with race detection (recommended for concurrency tests):
 
 ```bash
@@ -90,3 +130,5 @@ go test -race -v
 - Examples demonstrate both successful test cases and intentional failures for educational purposes
 - Fuzz testing examples may discover different edge cases on different runs due to randomness
 - Some fuzz edge case examples intentionally trigger panics to demonstrate error discovery capabilities
+- Property-based testing examples use predicates to verify mathematical and logical properties
+- Property patterns demonstrate reusable testing strategies applicable across many domains
