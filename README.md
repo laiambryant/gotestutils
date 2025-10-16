@@ -12,6 +12,7 @@ My Favourite testing utility methods for go. Includes utilities for:
 - Characterization testing
 - Stress testing
 - Property Based Testing
+- Fuzz testing
 - More to come...
 
 ## Installation
@@ -302,3 +303,191 @@ func TestSquareRootProperty(t *testing.T) {
 - **Living Documentation**: Properties document function behavior
 - **Regression Prevention**: Catches behavioral changes across refactoring
 - **Domain Modeling**: Codifies business rules and mathematical properties
+
+## Fuzz Testing Framework
+
+The `ftesting` package provides a comprehensive fuzz testing framework that automatically generates random inputs for functions with arbitrary signatures. Unlike traditional testing approaches that require manual input creation, fuzz testing uses reflection and sophisticated attribute systems to generate type-appropriate random values, helping discover edge cases, boundary conditions, and unexpected behaviors.
+
+### Fuzz Testing Fundamentals
+
+Fuzz testing validates function robustness by executing it with thousands of randomly generated inputs. This approach is particularly effective for finding:
+
+- **Edge Cases**: Inputs that cause unexpected behavior or crashes
+- **Boundary Conditions**: Values at the limits of acceptable ranges  
+- **Input Validation Issues**: Missing or insufficient input checking
+- **Panic Conditions**: Inputs that cause runtime panics
+- **Performance Issues**: Inputs that cause performance degradation
+
+#### FTesting Structure
+
+The `FTesting` struct is the foundation of fuzz testing:
+
+```go
+type FTesting struct {
+    f          any                    // Function to test (any signature)
+    iterations uint                   // Number of test iterations
+    attributes AttributesStruct       // Custom input generation rules
+    t          *testing.T             // Testing instance for reporting
+}
+```
+
+#### Creating Fuzz Tests
+
+Use method chaining to create and configure fuzz test instances:
+
+```go
+ft := &ftesting.FTesting{}
+ft.WithFunction(myFunc).
+   WithIterations(1000).
+   WithAttributes(customAttrs)
+```
+
+### Fuzz Test Execution
+
+#### Basic Execution
+
+`ApplyFunction()` generates random inputs and executes the test function:
+
+```go
+ft := &ftesting.FTesting{}
+ft.WithFunction(func(x int, y string) int {
+    return x + len(y)
+})
+
+for i := 0; i < 100; i++ {
+    success, err := ft.ApplyFunction()
+    if err != nil {
+        t.Errorf("Iteration %d failed: %v", i, err)
+    }
+}
+```
+
+#### Integrated Testing
+
+`Verify()` provides integrated execution and reporting with Go's testing framework:
+
+```go
+func TestMyFunction(t *testing.T) {
+    ft := &ftesting.FTesting{t: t}
+    ft.WithFunction(myFunction).
+       WithIterations(1000).
+       Verify()
+}
+```
+
+#### Input Generation
+
+`GenerateInputs()` creates random inputs without execution for custom testing scenarios:
+
+```go
+ft.WithFunction(func(x, y int) int { return x + y })
+inputs, err := ft.GenerateInputs()
+// inputs might be: []any{42, -17}
+```
+
+### Attributes System
+
+The attributes system provides fine-grained control over random value generation:
+
+#### Default Attributes
+
+```go
+attrs := attributes.NewFTAttributes() // Uses sensible defaults for all types
+ft.WithAttributes(attrs)
+```
+
+#### Custom Constraints
+
+```go
+attrs := attributes.NewFTAttributes()
+
+// Constrain integers to positive range
+attrs.IntegerAttr = attributes.IntegerAttributesImpl[int]{
+    Min:           1,
+    Max:           1000,
+    AllowNegative: false,
+    AllowZero:     false,
+}
+
+// Control string generation
+attrs.StringAttr = attributes.StringAttributes{
+    MinLen: 5,
+    MaxLen: 50,
+}
+
+// Configure float constraints
+attrs.FloatAttr = attributes.FloatAttributesImpl[float64]{
+    Min:        0.0,
+    Max:        100.0,
+    FiniteOnly: true,    // Exclude NaN, +Inf, -Inf
+    NonZero:    true,    // Exclude zero values
+}
+
+ft.WithAttributes(attrs)
+```
+
+#### Supported Types and Constraints
+
+- **Integers**: Min/Max ranges, zero/negative value control
+- **Floats**: Ranges, finite-only mode, zero exclusion
+- **Strings**: Length constraints, character set control
+- **Booleans**: Force true/false values or random distribution
+- **Slices/Arrays**: Length constraints, element generation rules
+- **Structs**: Field-by-field attribute configuration
+- **Pointers**: Nil probability, depth control
+- **Maps**: Size constraints, key/value generation rules
+
+### Fuzz Testing Examples
+
+Complete examples demonstrating fuzz testing:
+
+- [`examples/basic_fuzz_test.go`](examples/basic_fuzz_test.go) - Basic fuzz testing patterns with different data types and custom attributes
+- [`examples/advanced_fuzz_test.go`](examples/advanced_fuzz_test.go) - Advanced fuzzing with complex numbers, slices, maps, and composite types
+- [`examples/fuzz_edge_cases_test.go`](examples/fuzz_edge_cases_test.go) - Advanced fuzzing for edge case discovery, boundary condition testing, and panic detection
+
+### Integration with Testing Framework
+
+Fuzz tests integrate seamlessly with Go's testing framework:
+
+```go
+func TestStringProcessor(t *testing.T) {
+    attrs := attributes.NewFTAttributes()
+    attrs.StringAttr = attributes.StringAttributes{
+        MinLen: 1,
+        MaxLen: 100,
+    }
+
+    ft := &ftesting.FTesting{t: t}
+    ft.WithFunction(func(s string) (string, error) {
+        if len(s) > 50 {
+            return "", fmt.Errorf("string too long")
+        }
+        return strings.ToUpper(s), nil
+    }).WithAttributes(attrs).WithIterations(500)
+
+    // Test with panic recovery
+    for i := 0; i < 500; i++ {
+        func() {
+            defer func() {
+                if r := recover(); r != nil {
+                    t.Errorf("Function panicked with: %v", r)
+                }
+            }()
+            
+            _, err := ft.ApplyFunction()
+            if err != nil {
+                // Expected for long strings - this is fine
+            }
+        }()
+    }
+}
+```
+
+### Benefits of Fuzz Testing
+
+- **Automated Edge Case Discovery**: Finds problematic inputs without manual specification
+- **Comprehensive Coverage**: Tests far more input combinations than manual testing
+- **Robustness Validation**: Ensures functions handle unexpected inputs gracefully
+- **Regression Prevention**: Catches issues introduced during refactoring
+- **Security Testing**: Discovers input validation vulnerabilities
+- **Performance Analysis**: Identifies inputs that cause performance issues
