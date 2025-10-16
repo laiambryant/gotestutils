@@ -17,7 +17,7 @@ var f2 func(a int, b int) int = func(a int, b int) int {
 }
 
 var funcAnyToAny func(any) any = func(input any) any {
-	if val, ok := input.(int); ok {
+	if val, Ok := input.(int); Ok {
 		return val * 2
 	}
 	return input
@@ -32,7 +32,7 @@ var funcVariadicAnyToAny func(...any) any = func(args ...any) any {
 	}
 	sum := 0
 	for _, arg := range args {
-		if val, ok := arg.(int); ok {
+		if val, Ok := arg.(int); Ok {
 			sum += val
 		}
 	}
@@ -163,7 +163,7 @@ func TestApplyFunction_InvalidFunction(t *testing.T) {
 	if result != nil {
 		t.Errorf("Expected nil result, got %v", result)
 	}
-	if _, ok := err.(*InvalidFunctionProvidedError); !ok {
+	if _, Ok := err.(*InvalidFunctionProvidedError); !Ok {
 		t.Errorf("Expected InvalidFunctionProvidedError, got %T", err)
 	}
 }
@@ -218,7 +218,7 @@ func TestApplyFunction_NonConvertibleTypes(t *testing.T) {
 	if result != nil {
 		t.Errorf("Expected nil result, got %v", result)
 	}
-	if _, ok := err.(*InvalidFunctionProvidedError); !ok {
+	if _, Ok := err.(*InvalidFunctionProvidedError); !Ok {
 		t.Errorf("Expected InvalidFunctionProvidedError, got %T", err)
 	}
 }
@@ -232,8 +232,8 @@ func TestApplyFunction_MultipleReturnValues(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
-	resultSlice, ok := result.([]any)
-	if !ok {
+	resultSlice, Ok := result.([]any)
+	if !Ok {
 		t.Errorf("Expected []any result, got %T", result)
 	}
 	if len(resultSlice) != 3 {
@@ -284,8 +284,8 @@ func TestApplyFunction_StructTypeConversion(t *testing.T) {
 
 func TestSatisfyAll_NoPredicates(t *testing.T) {
 	pbt := NewPBTest(f1)
-	ok, failed := pbt.satisfyAll(42)
-	if !ok {
+	Ok, failed := pbt.satisfyAll(42)
+	if !Ok {
 		t.Error("Expected satisfyAll to return true when no predicates")
 	}
 	if failed != nil {
@@ -297,8 +297,8 @@ func TestSatisfyAll_PassingPredicates(t *testing.T) {
 	pred1 := mockPredicate{shouldPass: true, name: "pred1"}
 	pred2 := mockPredicate{shouldPass: true, name: "pred2"}
 	pbt := NewPBTest(f1).WithPredicates(pred1, pred2)
-	ok, failed := pbt.satisfyAll(42)
-	if !ok {
+	Ok, failed := pbt.satisfyAll(42)
+	if !Ok {
 		t.Error("Expected satisfyAll to return true when all predicates pass")
 	}
 	if len(failed) != 0 {
@@ -311,8 +311,8 @@ func TestSatisfyAll_FailingPredicates(t *testing.T) {
 	pred2 := mockPredicate{shouldPass: false, name: "pred2"}
 	pred3 := mockPredicate{shouldPass: false, name: "pred3"}
 	pbt := NewPBTest(f1).WithPredicates(pred1, pred2, pred3)
-	ok, failed := pbt.satisfyAll(42)
-	if ok {
+	Ok, failed := pbt.satisfyAll(42)
+	if Ok {
 		t.Error("Expected satisfyAll to return false when predicates fail")
 	}
 	if len(failed) != 2 {
@@ -340,8 +340,8 @@ func TestValidatePredicates_Passing(t *testing.T) {
 	if len(result) != 1 {
 		t.Errorf("Expected 1 result, got %d", len(result))
 	}
-	if !result[0].ok {
-		t.Error("Expected result to be ok")
+	if !result[0].Ok {
+		t.Error("Expected result to be Ok")
 	}
 	if result[0].Predicates != nil {
 		t.Error("Expected nil predicates for passing case")
@@ -359,8 +359,8 @@ func TestValidatePredicates_Failing(t *testing.T) {
 	if len(result) != 1 {
 		t.Errorf("Expected 1 result, got %d", len(result))
 	}
-	if result[0].ok {
-		t.Error("Expected result to not be ok")
+	if result[0].Ok {
+		t.Error("Expected result to not be Ok")
 	}
 	if len(result[0].Predicates) != 1 {
 		t.Errorf("Expected 1 failed predicate, got %d", len(result[0].Predicates))
@@ -385,8 +385,8 @@ func TestRun_ArrayOutput_WithPredicates(t *testing.T) {
 		t.Errorf("Expected 3 results, got %d", len(retOut))
 	}
 	for i, result := range retOut {
-		if !result.ok {
-			t.Errorf("Expected result %d to be ok", i)
+		if !result.Ok {
+			t.Errorf("Expected result %d to be Ok", i)
 		}
 	}
 }
@@ -400,8 +400,8 @@ func TestRun_SingleOutput_WithPredicates(t *testing.T) {
 	if len(retOut) != 1 {
 		t.Errorf("Expected 1 result, got %d", len(retOut))
 	}
-	if retOut[0].ok {
-		t.Error("Expected result to not be ok")
+	if retOut[0].Ok {
+		t.Error("Expected result to not be Ok")
 	}
 }
 
@@ -425,18 +425,18 @@ func TestRun_MultipleIterations(t *testing.T) {
 
 func TestFilterPBTTestOut(t *testing.T) {
 	testData := []PBTestOut{
-		{Output: 1, ok: true, Predicates: nil},
-		{Output: 2, ok: false, Predicates: []p.Predicate{mockPredicate{shouldPass: false, name: "pred"}}},
-		{Output: 3, ok: true, Predicates: nil},
-		{Output: 4, ok: false, Predicates: []p.Predicate{mockPredicate{shouldPass: false, name: "pred"}}},
+		{Output: 1, Ok: true, Predicates: nil},
+		{Output: 2, Ok: false, Predicates: []p.Predicate{mockPredicate{shouldPass: false, name: "pred"}}},
+		{Output: 3, Ok: true, Predicates: nil},
+		{Output: 4, Ok: false, Predicates: []p.Predicate{mockPredicate{shouldPass: false, name: "pred"}}},
 	}
 	filtered := FilterPBTTestOut(testData)
 	if len(filtered) != 2 {
 		t.Errorf("Expected 2 filtered results, got %d", len(filtered))
 	}
 	for _, result := range filtered {
-		if result.ok {
-			t.Error("Expected all filtered results to have ok: false")
+		if result.Ok {
+			t.Error("Expected all filtered results to have Ok: false")
 		}
 	}
 }
@@ -496,10 +496,10 @@ func TestPBTestOut(t *testing.T) {
 	out1 := PBTestOut{
 		Output:     "test_output",
 		Predicates: []p.Predicate{pred},
-		ok:         false,
+		Ok:         false,
 	}
-	if out1.ok {
-		t.Error("Expected PBTestOut.ok to be false")
+	if out1.Ok {
+		t.Error("Expected PBTestOut.Ok to be false")
 	}
 	if out1.Output != "test_output" {
 		t.Errorf("Expected Output to be 'test_output', got %v", out1.Output)
@@ -509,10 +509,10 @@ func TestPBTestOut(t *testing.T) {
 	}
 	out2 := PBTestOut{
 		Predicates: nil,
-		ok:         true,
+		Ok:         true,
 	}
-	if !out2.ok {
-		t.Error("Expected PBTestOut.ok to be true")
+	if !out2.Ok {
+		t.Error("Expected PBTestOut.Ok to be true")
 	}
 	if out2.Predicates != nil {
 		t.Error("Expected Predicates to be nil for passing case")
@@ -521,8 +521,8 @@ func TestPBTestOut(t *testing.T) {
 
 func TestSatisfyAll_EdgeCases(t *testing.T) {
 	pbt := &PBTest{predicates: []p.Predicate{}}
-	ok, failed := pbt.satisfyAll(42)
-	if !ok {
+	Ok, failed := pbt.satisfyAll(42)
+	if !Ok {
 		t.Error("Expected satisfyAll to return true for empty predicates slice")
 	}
 	if failed != nil {
@@ -600,8 +600,8 @@ func TestRun_WithPredicatesAndIntFunction(t *testing.T) {
 		t.Error("Expected at least 1 result with predicates")
 	}
 	for _, result := range results {
-		if !result.ok {
-			t.Error("Expected result to be ok with passing predicate")
+		if !result.Ok {
+			t.Error("Expected result to be Ok with passing predicate")
 		}
 	}
 }
@@ -620,7 +620,7 @@ func TestRun_WithPredicatesAndStringFunction(t *testing.T) {
 		t.Error("Expected at least 1 result with predicates")
 	}
 	for _, result := range results {
-		if result.ok {
+		if result.Ok {
 			t.Error("Expected result to fail with failing predicate")
 		}
 		if len(result.Predicates) != 1 {
@@ -663,8 +663,8 @@ func TestRun_WithArrayReturningFunction(t *testing.T) {
 		t.Errorf("Expected %d results from array output, got %d", expectedResults, len(results))
 	}
 	for i, result := range results {
-		if !result.ok {
-			t.Errorf("Expected result %d to be ok", i)
+		if !result.Ok {
+			t.Errorf("Expected result %d to be Ok", i)
 		}
 	}
 }
@@ -682,7 +682,7 @@ func TestRun_WithSingleValueReturningFunction(t *testing.T) {
 	if len(results) != 1 {
 		t.Errorf("Expected 1 result from single output, got %d", len(results))
 	}
-	if results[0].ok {
+	if results[0].Ok {
 		t.Error("Expected result to fail with failing predicate")
 	}
 }
@@ -702,7 +702,7 @@ func TestRun_WithMixedPredicates(t *testing.T) {
 		t.Error("Expected at least 1 result")
 	}
 	for _, result := range results {
-		if result.ok {
+		if result.Ok {
 			t.Error("Expected result to fail when any predicate fails")
 		}
 		if len(result.Predicates) != 1 {
@@ -752,8 +752,8 @@ func TestRun_ComplexArrayOutput(t *testing.T) {
 		t.Errorf("Expected 5 results from complex array, got %d", len(results))
 	}
 	for i, result := range results {
-		if !result.ok {
-			t.Errorf("Expected result %d to be ok", i)
+		if !result.Ok {
+			t.Errorf("Expected result %d to be Ok", i)
 		}
 	}
 }
@@ -772,8 +772,8 @@ func TestRun_WithTwoParameterFunction(t *testing.T) {
 		t.Error("Expected at least 1 result")
 	}
 	for _, result := range results {
-		if !result.ok {
-			t.Error("Expected result to be ok with passing predicate")
+		if !result.Ok {
+			t.Error("Expected result to be Ok with passing predicate")
 		}
 	}
 }
@@ -792,7 +792,7 @@ func TestRun_WithFloatFunction(t *testing.T) {
 		t.Error("Expected at least 1 result")
 	}
 	for _, result := range results {
-		if result.ok {
+		if result.Ok {
 			t.Error("Expected result to fail with failing predicate")
 		}
 	}

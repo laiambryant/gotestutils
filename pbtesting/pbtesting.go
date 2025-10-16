@@ -45,16 +45,23 @@
 //
 //	func TestWithCustomInputs(t *testing.T) {
 //	    attrs := attributes.NewFTAttributes()
-//	    attrs.IntegerAttr = IntegerAttributesImpl[int]{Min: 1, Max: 100}
+//	    attrs.IntegerAttr = attributes.IntegerAttributesImpl[int]{Min: 1, Max: 100}
 //
 //	    test := NewPBTest(myFunction).
 //	        WithIterations(500).
-//	        WithArgAttributes(attrs).
 //	        WithPredicates(pred1, pred2).
 //	        WithT(t)
 //
-//	    results, _ := test.Run()
+//	    results, err := test.RunWithAttributes(attrs)
+//	    if err != nil {
+//	        t.Fatal(err)
+//	    }
+//
 //	    // Process results...
+//	    failures := FilterPBTTestOut(results)
+//	    if len(failures) > 0 {
+//	        t.Errorf("Found %d property violations", len(failures))
+//	    }
 //	}
 //
 // See the properties/predicates subpackage for predicate implementations.
@@ -65,6 +72,7 @@ import (
 	"testing"
 
 	"github.com/laiambryant/gotestutils/ftesting"
+	"github.com/laiambryant/gotestutils/ftesting/attributes"
 	p "github.com/laiambryant/gotestutils/pbtesting/properties/predicates"
 	"github.com/laiambryant/gotestutils/utils"
 )
@@ -105,7 +113,7 @@ type PBTest struct {
 // Fields:
 //   - Output: The value returned by the function under test
 //   - Predicates: List of predicates that failed for this output (nil if all passed)
-//   - ok: true if all predicates passed, false if any failed
+//   - Ok: true if all predicates passed, false if any failed
 //
 // Use FilterPBTTestOut to extract only the failing test cases from a slice of results.
 //
@@ -113,14 +121,14 @@ type PBTest struct {
 //
 //	results, _ := test.Run()
 //	for _, result := range results {
-//	    if !result.ok {
+//	    if !result.Ok {
 //	        t.Errorf("Output %v failed predicates: %v", result.Output, result.Predicates)
 //	    }
 //	}
 type PBTestOut struct {
 	Output     any
 	Predicates []p.Predicate
-	ok         bool
+	Ok         bool
 }
 
 // returnTypes is an internal type constraint for function return values.
@@ -233,7 +241,7 @@ func (pbt *PBTest) WithF(f any) *PBTest { pbt.f = f; return pbt }
 // The returned slice includes both passing and failing iterations. Use FilterPBTTestOut
 // to extract only the failures.
 //
-// If no predicates are configured, all iterations are marked as successful (ok=true).
+// If no predicates are configured, all iterations are marked as successful (Ok=true).
 // If the function is nil, returns an empty slice with no error.
 //
 // Example usage:
@@ -252,11 +260,93 @@ func (pbt *PBTest) WithF(f any) *PBTest { pbt.f = f; return pbt }
 //	    }
 //	}
 func (pbt *PBTest) Run() (retOut []PBTestOut, err error) {
+	return pbt.RunWithAttributes(nil)
+}
+
+// RunWithAttributes executes the property-based test with custom attribute constraints
+// for input generation. This method provides fine-grained control over the random values
+// generated for function parameters, allowing you to constrain the input space to specific
+// ranges, types, or characteristics.
+//
+// Unlike Run(), which uses default attributes for all input types, RunWithAttributes allows
+// you to specify custom attributes that control how the ftesting framework generates random
+// inputs. This is particularly useful when testing functions with specific domain constraints,
+// avoiding edge cases that aren't relevant to your use case, or focusing tests on particular
+// input ranges.
+//
+// Parameters:
+//   - a: An AttributesStruct containing custom attribute configurations for input generation.
+//     If nil, default attributes are used (equivalent to calling Run()).
+//
+// Returns:
+//   - []PBTestOut: A slice containing results for each iteration, including outputs and
+//     any predicate failures
+//   - error: An error if input generation fails or the function is invalid
+//
+// The method delegates to ftesting.GenerateInputs() with the provided attributes, ensuring
+// that all random values respect the specified constraints (e.g., integer ranges, string
+// lengths, floating-point bounds).
+//
+// Example usage with integer constraints:
+//
+//	attrs := attributes.NewFTAttributes()
+//	attrs.IntegerAttr = attributes.IntegerAttributesImpl[int]{
+//	    Min:           10,
+//	    Max:           100,
+//	    AllowNegative: false,
+//	    AllowZero:     false,
+//	}
+//
+//	test := NewPBTest(myFunc).
+//	    WithIterations(1000).
+//	    WithPredicates(myPredicate)
+//
+//	results, err := test.RunWithAttributes(attrs)
+//	if err != nil {
+//	    t.Fatal(err)
+//	}
+//
+//	failures := FilterPBTTestOut(results)
+//	if len(failures) > 0 {
+//	    t.Errorf("Found %d property violations", len(failures))
+//	}
+//
+// Example usage with string constraints:
+//
+//	attrs := attributes.NewFTAttributes()
+//	attrs.StringAttr = attributes.StringAttributes{
+//	    MinLen: 5,
+//	    MaxLen: 20,
+//	}
+//
+//	results, err := test.RunWithAttributes(attrs)
+//
+// Example usage with float constraints:
+//
+//	attrs := attributes.NewFTAttributes()
+//	attrs.FloatAttr = attributes.FloatAttributesImpl[float64]{
+//	    Min:        0.0,
+//	    Max:        1.0,
+//	    FiniteOnly: true,
+//	}
+//
+//	results, err := test.RunWithAttributes(attrs)
+//
+// Note: The attributes apply to all parameters of the function under test. For multi-parameter
+// functions, all parameters of the same type will use the same attribute constraints.
+//
+// See also: Run(), WithArgAttributes(), ftesting.WithAttributes()
+func (pbt *PBTest) RunWithAttributes(a attributes.AttributesStruct) (retOut []PBTestOut, err error) {
+	var fuzzTest *ftesting.FTesting
 	if pbt.f == nil {
 		return []PBTestOut{}, nil
 	}
 	for i := uint(0); i < pbt.iterations; i++ {
-		fuzzTest := (&ftesting.FTesting{}).WithFunction(pbt.f)
+		if a == nil {
+			fuzzTest = (&ftesting.FTesting{}).WithFunction(pbt.f).WithAttributes(attributes.NewFTAttributes())
+		} else {
+			fuzzTest = (&ftesting.FTesting{}).WithFunction(pbt.f).WithAttributes(a)
+		}
 		inputs, err := fuzzTest.GenerateInputs()
 		if err != nil {
 			return nil, err
@@ -287,17 +377,17 @@ func (pbt *PBTest) Run() (retOut []PBTestOut, err error) {
 //
 // This method is called internally by Run for each function output.
 func (pbt PBTest) validatePredicates(retOut []PBTestOut, out any) []PBTestOut {
-	if ok, failedpredicates := pbt.satisfyAll(out); !ok {
+	if Ok, failedpredicates := pbt.satisfyAll(out); !Ok {
 		retOut = append(retOut, PBTestOut{
 			Output:     out,
 			Predicates: failedpredicates,
-			ok:         false,
+			Ok:         false,
 		})
 	} else {
 		retOut = append(retOut, PBTestOut{
 			Output:     out,
 			Predicates: nil,
-			ok:         true,
+			Ok:         true,
 		})
 	}
 	return retOut
@@ -369,13 +459,13 @@ func (pbt *PBTest) applyFunction(args ...any) (returnTypes, error) {
 //   - val: The value to check against predicates
 //
 // Returns:
-//   - ok: true if all predicates pass, false if any fail
+//   - Ok: true if all predicates pass, false if any fail
 //   - failedpredicates: A slice of predicates that failed (nil if all passed)
 //
 // If no predicates are configured, returns (true, nil).
 //
 // This method is called internally by validatePredicates.
-func (pbt *PBTest) satisfyAll(val any) (ok bool, failedpredicates []p.Predicate) {
+func (pbt *PBTest) satisfyAll(val any) (Ok bool, failedpredicates []p.Predicate) {
 	if len(pbt.predicates) == 0 {
 		return true, nil
 	}
@@ -405,7 +495,7 @@ func (pbt *PBTest) haspredicates() bool {
 // Parameters:
 //   - in: A slice of PBTestOut results from Run()
 //
-// Returns a new slice containing only the results where ok is false (i.e., where
+// Returns a new slice containing only the results where Ok is false (i.e., where
 // at least one predicate failed).
 //
 // Example usage:
@@ -422,6 +512,6 @@ func (pbt *PBTest) haspredicates() bool {
 //	}
 func FilterPBTTestOut(in []PBTestOut) []PBTestOut {
 	return utils.Filter(in, func(po PBTestOut) bool {
-		return !po.ok
+		return !po.Ok
 	})
 }
